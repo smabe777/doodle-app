@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planning EPEBW - Musique</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1 id="poll-title">Chargement...</h1>
+      <p id="poll-description" class="subtitle"></p>
+      <p id="poll-duration" class="meta"></p>
+    </header>
+
+    <main>
+      <div id="error-panel" class="hidden">
+        <section>
+          <p class="empty-state">Sondage introuvable. Il a peut-être été supprimé ou le lien est invalide.</p>
+        </section>
+      </div>
+
+      <section id="respond-section">
+        <h2>Votre disponibilité</h2>
+        <form id="respond-form">
+          <div class="form-group">
+            <label for="participant-name">Votre nom</label>
+            <input type="text" id="participant-name" placeholder="Entrez votre nom" required>
+          </div>
+
+          <div class="form-group" id="upfront-instruments-section" style="display:none;">
+            <label>Vos instruments</label>
+            <p class="help-text">Sélectionnez les instruments que vous jouez. Ils seront pré-sélectionnés pour chaque date. Mais vous pourrez les adapter pour chaque date si utile.</p>
+            <div id="upfront-instruments"></div>
+          </div>
+
+          <div class="availability-grid" id="availability-grid"></div>
+
+          <button type="submit" class="btn btn-primary">Soumettre la réponse</button>
+        </form>
+      </section>
+
+      <section id="results-section">
+        <h2>Réponses (<span id="response-count">0</span>)</h2>
+        <div id="no-responses" class="empty-state">Aucune réponse pour l'instant. Soyez le premier !</div>
+        <div class="table-wrapper">
+          <table id="results-table" class="hidden">
+            <thead>
+              <tr id="results-header"></tr>
+            </thead>
+            <tbody id="results-body"></tbody>
+            <tfoot>
+              <tr id="results-summary"></tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

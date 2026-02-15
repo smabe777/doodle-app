@@ -1,0 +1,12 @@
+{
+  "name": "doodle-app",
+  "version": "1.0.0",
+  "description": "A lightweight Doodle-like scheduling poll",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.3.0"
+  }
+}

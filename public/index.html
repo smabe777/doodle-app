@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Créer un sondage - Planifier ensemble</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Planifier ensemble</h1>
+      <p class="subtitle">Trouvez le meilleur moment pour votre groupe</p>
+    </header>
+
+    <main>
+      <form id="create-form">
+        <div class="form-group">
+          <label for="title">Titre de l'événement</label>
+          <input type="text" id="title" value="Session de musique" required>
+        </div>
+
+        <div class="form-group">
+          <label for="description">Description (optionnel)</label>
+          <textarea id="description" rows="3" placeholder="Par ex., Apportez vos instruments !"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="duration">Durée</label>
+          <select id="duration">
+            <option value="1 heure">1 heure</option>
+            <option value="2 heures">2 heures</option>
+            <option value="3 heures" selected>3 heures</option>
+            <option value="4 heures">4 heures</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="participants">Participants (un par ligne)</label>
+          <textarea id="participants" rows="5" placeholder="Alice&#10;Bob&#10;Charlie" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="instruments">Instruments disponibles (un par ligne)</label>
+          <textarea id="instruments" rows="5" placeholder="Guitare&#10;Basse&#10;Batterie&#10;Clavier" required></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="start-date">Première date</label>
+            <input type="date" id="start-date" required>
+          </div>
+
+          <div class="form-group">
+            <label for="num-dates">Nombre de dates</label>
+            <input type="number" id="num-dates" value="8" min="1" max="52" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Dates proposées</label>
+          <p class="help-text">Dates hebdomadaires à partir de la première date. Décochez celles dont vous n'avez pas besoin.</p>
+          <div id="dates-container" class="dates-grid"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Créer le sondage</button>
+      </form>
+
+      <div id="success-panel" class="hidden">
+        <h2>Sondage créé !</h2>
+        <p>Partagez ce lien avec vos amis :</p>
+        <div class="share-link">
+          <input type="text" id="share-url" readonly>
+          <button type="button" id="copy-btn" class="btn btn-secondary">Copier</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

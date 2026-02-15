@@ -1,0 +1,406 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f5f7fa;
+  color: #333;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+h1 {
+  font-size: 2rem;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+}
+
+h2 {
+  font-size: 1.3rem;
+  color: #1a1a2e;
+  margin-bottom: 16px;
+}
+
+.subtitle {
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.meta {
+  color: #888;
+  font-size: 0.95rem;
+}
+
+.back-link {
+  display: inline-block;
+  color: #4361ee;
+  text-decoration: none;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+/* Forms */
+
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group > label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+input[type="text"],
+input[type="date"],
+input[type="number"],
+textarea,
+select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: inherit;
+  background: #fff;
+}
+
+input[type="text"]:focus,
+input[type="date"]:focus,
+input[type="number"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #4361ee;
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+}
+
+.help-text {
+  color: #888;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-primary {
+  background: #4361ee;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #3a56d4;
+}
+
+.btn-secondary {
+  background: #e9ecef;
+  color: #333;
+}
+
+.btn-secondary:hover {
+  background: #dee2e6;
+}
+
+/* Date checkboxes on create page */
+
+.dates-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.date-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  background: #fff;
+  user-select: none;
+}
+
+.date-checkbox:hover {
+  border-color: #4361ee;
+}
+
+.date-checkbox:has(input:checked) {
+  background: #e8f0fe;
+  border-color: #4361ee;
+  color: #1a1a2e;
+}
+
+.date-checkbox input[type="checkbox"] {
+  accent-color: #4361ee;
+}
+
+/* Availability grid on poll page */
+
+.availability-grid {
+  margin: 16px 0 24px;
+}
+
+.availability-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.availability-row:last-child {
+  border-bottom: none;
+}
+
+.date-label {
+  width: 150px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.radio-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  border: 2px solid #ddd;
+  border-radius: 24px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+  font-weight: 500;
+  user-select: none;
+}
+
+.radio-option:hover {
+  border-color: #aaa;
+}
+
+.radio-option input[type="radio"] {
+  display: none;
+}
+
+.radio-yes:has(input:checked) {
+  background: #d4edda;
+  border-color: #28a745;
+  color: #155724;
+}
+
+.radio-ifneeded:has(input:checked) {
+  background: #fff3cd;
+  border-color: #ffc107;
+  color: #856404;
+}
+
+.radio-no:has(input:checked) {
+  background: #f8d7da;
+  border-color: #dc3545;
+  color: #721c24;
+}
+
+/* Results table */
+
+.table-wrapper {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 10px 14px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+  white-space: nowrap;
+}
+
+th {
+  background: #f8f9fa;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+td.participant-name {
+  text-align: left;
+  font-weight: 500;
+}
+
+.answer {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.answer-yes {
+  background: #d4edda;
+  color: #155724;
+}
+
+.answer-ifneeded {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.answer-no {
+  background: #f5f5f5;
+  color: #bbb;
+}
+
+tfoot td {
+  background: #f8f9fa;
+  font-size: 0.9rem;
+}
+
+.ifneeded-count {
+  color: #856404;
+  font-size: 0.8em;
+}
+
+/* Share link */
+
+.share-link {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.share-link input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #f8f9fa;
+  font-family: monospace;
+}
+
+/* Success panel */
+
+#success-panel {
+  text-align: center;
+  padding: 32px 0;
+}
+
+#success-panel h2 {
+  color: #28a745;
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+}
+
+/* Sections */
+
+section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+form#create-form {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Empty state */
+
+.empty-state {
+  text-align: center;
+  color: #999;
+  padding: 24px;
+  font-size: 0.95rem;
+}
+
+/* Utilities */
+
+.hidden {
+  display: none !important;
+}
+
+/* Responsive */
+
+@media (max-width: 600px) {
+  .container {
+    padding: 12px;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  .availability-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .date-label {
+    width: auto;
+  }
+
+  th, td {
+    padding: 6px 8px;
+    font-size: 0.8rem;
+  }
+
+  .radio-option {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  section, form#create-form {
+    padding: 16px;
+  }
+}
