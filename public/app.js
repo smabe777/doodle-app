@@ -644,12 +644,12 @@ function displayPollHistory() {
   polls.forEach(poll => {
     const item = document.createElement("div");
     item.className = "poll-item";
-    
+
     const info = document.createElement("div");
     const title = document.createElement("div");
     title.className = "poll-item-title";
     title.textContent = poll.title;
-    
+
     const date = document.createElement("div");
     date.className = "poll-item-date";
     date.textContent = new Date(poll.createdAt).toLocaleDateString("fr-FR", {
@@ -659,17 +659,38 @@ function displayPollHistory() {
       hour: "2-digit",
       minute: "2-digit"
     });
-    
+
     info.appendChild(title);
     info.appendChild(date);
-    
-    const link = document.createElement("a");
-    link.className = "poll-item-link";
-    link.href = poll.url;
-    link.textContent = "Voir le sondage";
-    
+
+    // Container for buttons
+    const buttonsContainer = document.createElement("div");
+    buttonsContainer.style.display = "flex";
+    buttonsContainer.style.gap = "8px";
+
+    // Admin link
+    const adminLink = document.createElement("a");
+    adminLink.className = "poll-item-link";
+    adminLink.href = poll.url + "?admin=true";
+    adminLink.textContent = "Voir le sondage";
+
+    // Share link button
+    const shareBtn = document.createElement("button");
+    shareBtn.className = "poll-item-link";
+    shareBtn.textContent = "Lien à partager";
+    shareBtn.style.cursor = "pointer";
+    shareBtn.addEventListener("click", () => {
+      navigator.clipboard.writeText(poll.url);
+      const originalText = shareBtn.textContent;
+      shareBtn.textContent = "Copié !";
+      setTimeout(() => { shareBtn.textContent = originalText; }, 2000);
+    });
+
+    buttonsContainer.appendChild(adminLink);
+    buttonsContainer.appendChild(shareBtn);
+
     item.appendChild(info);
-    item.appendChild(link);
+    item.appendChild(buttonsContainer);
     pollList.appendChild(item);
   });
 }
@@ -680,12 +701,16 @@ function initExportButton(poll) {
   const exportBtn = document.getElementById("export-btn");
   if (!exportBtn) return;
 
-  // Only show export button if user is the poll creator
+  // Check if we're in admin mode (URL has ?admin=true)
+  const urlParams = new URLSearchParams(window.location.search);
+  const isAdminMode = urlParams.get("admin") === "true";
+
+  // Only show export button if user is the poll creator AND in admin mode
   const createdPolls = JSON.parse(localStorage.getItem("createdPolls") || "[]");
   const isCreator = createdPolls.some(p => p.id === poll.id);
 
-  // Show export button only for creator and when there are responses
-  if (isCreator && poll.responses.length > 0) {
+  // Show export button only for creator in admin mode and when there are responses
+  if (isCreator && isAdminMode && poll.responses.length > 0) {
     exportBtn.classList.remove("hidden");
   }
 
