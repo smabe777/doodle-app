@@ -608,8 +608,12 @@ function initExportButton(poll) {
   const exportBtn = document.getElementById("export-btn");
   if (!exportBtn) return;
 
-  // Show export button when there are responses
-  if (poll.responses.length > 0) {
+  // Only show export button if user is the poll creator
+  const createdPolls = JSON.parse(localStorage.getItem("createdPolls") || "[]");
+  const isCreator = createdPolls.some(p => p.id === poll.id);
+
+  // Show export button only for creator and when there are responses
+  if (isCreator && poll.responses.length > 0) {
     exportBtn.classList.remove("hidden");
   }
 
@@ -639,13 +643,13 @@ function exportToGoogleSheets(poll) {
       // Only include if participant is available (yes or ifneeded)
       if (availability === "yes" || availability === "ifneeded") {
         const row = [formattedDate, response.name];
-        
-        // Add checkmarks for each instrument
+
+        // Add checkmarks for each instrument (from upfront selection only)
         poll.instruments.forEach(instrument => {
-          const hasInstrument = response.instruments[dateStr]?.includes(instrument);
+          const hasInstrument = response.upfrontInstruments?.includes(instrument);
           row.push(hasInstrument ? "✓" : "");
         });
-        
+
         lines.push(row.join("	"));
       }
     });
