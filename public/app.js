@@ -178,7 +178,7 @@ async function initPollPage(pollId) {
     document.getElementById('poll-title').textContent = poll.title;
     document.getElementById('poll-description').textContent = poll.description;
     document.getElementById('poll-duration').textContent =
-      poll.duration ? `Durée : ${poll.duration}` : '';
+      poll.duration ? `Rencontre : ${poll.duration}` : '';
     document.title = `${poll.title} - Planning EPEBW - Musique`;
 
     buildParticipantSelect(poll.participants, poll);
