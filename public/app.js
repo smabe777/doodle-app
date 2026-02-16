@@ -138,12 +138,13 @@ function initCreatePage() {
       const shareUrl = `${window.location.origin}${data.url}`;
       document.getElementById('share-url').value = shareUrl;
 
-      // Save poll to localStorage
+      // Save poll to localStorage with deletion token
       savePollToHistory({
         id: data.id,
         title: payload.title,
         url: shareUrl,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        deletionToken: data.deletionToken
       });
 
       // Refresh poll history display
@@ -667,6 +668,7 @@ function displayPollHistory() {
     const buttonsContainer = document.createElement("div");
     buttonsContainer.style.display = "flex";
     buttonsContainer.style.gap = "8px";
+    buttonsContainer.style.flexWrap = "wrap";
 
     // Admin link
     const adminLink = document.createElement("a");
@@ -686,13 +688,53 @@ function displayPollHistory() {
       setTimeout(() => { shareBtn.textContent = originalText; }, 2000);
     });
 
+    // Delete button
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "poll-item-link poll-item-delete";
+    deleteBtn.textContent = "Supprimer";
+    deleteBtn.style.cursor = "pointer";
+    deleteBtn.addEventListener("click", async () => {
+      if (confirm(`Êtes-vous sûr de vouloir supprimer le sondage "${poll.title}" ?\n\nCette action est irréversible et supprimera toutes les réponses des participants.`)) {
+        await deletePoll(poll);
+      }
+    });
+
     buttonsContainer.appendChild(adminLink);
     buttonsContainer.appendChild(shareBtn);
+    buttonsContainer.appendChild(deleteBtn);
 
     item.appendChild(info);
     item.appendChild(buttonsContainer);
     pollList.appendChild(item);
   });
+}
+
+async function deletePoll(poll) {
+  try {
+    const res = await fetch(`/api/polls/${poll.id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deletionToken: poll.deletionToken })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Erreur lors de la suppression');
+    }
+
+    // Remove from localStorage
+    const polls = JSON.parse(localStorage.getItem("createdPolls") || "[]");
+    const updatedPolls = polls.filter(p => p.id !== poll.id);
+    localStorage.setItem("createdPolls", JSON.stringify(updatedPolls));
+
+    // Refresh display
+    displayPollHistory();
+
+    alert('Sondage supprimé avec succès.');
+  } catch (err) {
+    alert('Erreur lors de la suppression du sondage : ' + err.message);
+  }
 }
 
 // --- Export Functions ---

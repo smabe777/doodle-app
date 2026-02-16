@@ -456,6 +456,17 @@ tfoot td {
   color: #e0e0e0;
 }
 
+.poll-item-delete {
+  border-color: #8b4444;
+  color: #d88;
+}
+
+.poll-item-delete:hover {
+  background: #4a2020;
+  color: #faa;
+  border-color: #a55;
+}
+
 /* Export button */
 .btn-export {
   background: #2a2a2a;

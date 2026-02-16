@@ -46,7 +46,8 @@ export default async (req, context) => {
       }
     }
 
-    // Create poll object
+    // Create poll object with deletion token
+    const deletionToken = randomUUID();
     const poll = {
       id: randomUUID(),
       title: body.title.trim(),
@@ -57,13 +58,14 @@ export default async (req, context) => {
       participants: body.participants,
       instruments: body.instruments,
       responses: [],
+      deletionToken: deletionToken,
     };
 
     // Connect to MongoDB and insert poll
     const { db } = await connectToDatabase();
     await db.collection('polls').insertOne(poll);
 
-    return new Response(JSON.stringify({ id: poll.id, url: `/poll/${poll.id}` }), {
+    return new Response(JSON.stringify({ id: poll.id, url: `/poll/${poll.id}`, deletionToken: deletionToken }), {
       status: 201,
       headers: { 'Content-Type': 'application/json' }
     });
