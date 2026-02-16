@@ -196,6 +196,12 @@ async function initPollPage(pollId) {
         document.querySelectorAll('.upfront-instrument:checked')
       ).map(cb => cb.value);
 
+      // Validate that at least one upfront instrument is selected
+      if (upfrontInstruments.length === 0) {
+        alert('Veuillez sélectionner au moins un instrument dans "Vos instruments".');
+        return;
+      }
+
       const answers = {};
       const instruments = {};
       for (const date of poll.dates) {
@@ -287,7 +293,18 @@ function buildUpfrontInstruments(instruments) {
 
     // Add event listener to update per-date instruments when upfront selection changes
     const checkbox = label.querySelector('input');
-    checkbox.addEventListener('change', () => {
+    checkbox.addEventListener('change', (e) => {
+      // Prevent unchecking the last instrument
+      const allCheckboxes = container.querySelectorAll('.upfront-instrument');
+      const checkedCount = Array.from(allCheckboxes).filter(cb => cb.checked).length;
+
+      if (checkedCount === 0) {
+        e.preventDefault();
+        checkbox.checked = true;
+        alert('Au moins un instrument doit être sélectionné.');
+        return;
+      }
+
       updatePerDateInstruments();
     });
   });
@@ -301,15 +318,8 @@ function buildAvailabilityGrid(dates, instruments) {
     const row = document.createElement('div');
     row.className = 'availability-row';
 
-    let instrumentsHtml = '<div class="instruments-select" id="instruments-' + dateStr + '" style="display:none; margin-top: 8px;">';
-    instrumentsHtml += '<label style="font-size: 0.9em; color: #666;">Instruments :</label>';
-    instruments.forEach(instrument => {
-      instrumentsHtml += `<label style="display: block; margin: 4px 0;">
-        <input type="checkbox" name="instrument-${dateStr}" value="${instrument}">
-        <span>${instrument}</span>
-      </label>`;
-    });
-    instrumentsHtml += '</div>';
+    // Create empty instruments container (will be populated dynamically)
+    const instrumentsHtml = '<div class="instruments-select" id="instruments-' + dateStr + '" style="display:none; margin-top: 8px;"></div>';
 
     row.innerHTML =
       `<span class="date-label" data-date="${dateStr}">${formatDateDisplay(dateStr)}</span>` +
@@ -330,22 +340,72 @@ function buildAvailabilityGrid(dates, instruments) {
       instrumentsHtml;
     grid.appendChild(row);
 
-    // Add event listeners to show/hide instruments and pre-check upfront instruments
+    // Add event listeners to show/hide instruments
     const radios = row.querySelectorAll(`input[name="answer-${dateStr}"]`);
     const instrumentsDiv = row.querySelector(`#instruments-${dateStr}`);
     radios.forEach(radio => {
       radio.addEventListener('change', () => {
         if (radio.value === 'yes' || radio.value === 'ifneeded') {
+          // Get upfront selected instruments
+          const upfrontInstruments = Array.from(
+            document.querySelectorAll('.upfront-instrument:checked')
+          ).map(cb => cb.value);
+
+          // Rebuild instruments div with only upfront instruments
+          rebuildDateInstruments(dateStr, upfrontInstruments);
           instrumentsDiv.style.display = 'block';
-          // Pre-check upfront instruments
-          updatePerDateInstrumentsForDate(dateStr);
         } else {
           instrumentsDiv.style.display = 'none';
-          // Uncheck all instruments when selecting "Non"
-          instrumentsDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
         }
       });
     });
+  });
+}
+
+function rebuildDateInstruments(dateStr, upfrontInstruments) {
+  const instrumentsDiv = document.getElementById(`instruments-${dateStr}`);
+  if (!instrumentsDiv) return;
+
+  // Save currently checked instruments
+  const previouslyChecked = Array.from(
+    instrumentsDiv.querySelectorAll('input[type="checkbox"]:checked')
+  ).map(cb => cb.value);
+
+  // Rebuild with only upfront instruments
+  instrumentsDiv.innerHTML = '<label style="font-size: 0.9em; color: #888; display: block; margin-bottom: 6px;">Instruments :</label>';
+
+  upfrontInstruments.forEach(instrument => {
+    const label = document.createElement('label');
+    label.style.display = 'block';
+    label.style.margin = '4px 0';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.name = `instrument-${dateStr}`;
+    checkbox.value = instrument;
+    // Check if it was previously checked, otherwise check all by default
+    checkbox.checked = previouslyChecked.length > 0
+      ? previouslyChecked.includes(instrument)
+      : true;
+
+    // Prevent unchecking the last instrument
+    checkbox.addEventListener('change', (e) => {
+      const allCheckboxes = instrumentsDiv.querySelectorAll('input[type="checkbox"]');
+      const checkedCount = Array.from(allCheckboxes).filter(cb => cb.checked).length;
+
+      if (checkedCount === 0) {
+        e.preventDefault();
+        checkbox.checked = true;
+        alert('Au moins un instrument doit rester sélectionné.');
+      }
+    });
+
+    const span = document.createElement('span');
+    span.textContent = ' ' + instrument;
+
+    label.appendChild(checkbox);
+    label.appendChild(span);
+    instrumentsDiv.appendChild(label);
   });
 }
 
@@ -354,6 +414,11 @@ function updatePerDateInstruments() {
   const grid = document.getElementById('availability-grid');
   const rows = grid.querySelectorAll('.availability-row');
 
+  // Get upfront selected instruments
+  const upfrontInstruments = Array.from(
+    document.querySelectorAll('.upfront-instrument:checked')
+  ).map(cb => cb.value);
+
   rows.forEach(row => {
     const dateStr = row.querySelector('.date-label').dataset.date ||
                     Array.from(row.querySelectorAll('input[type="radio"]'))[0].name.replace('answer-', '');
@@ -361,7 +426,7 @@ function updatePerDateInstruments() {
     // Only update if this date's answer is yes or ifneeded
     const selectedRadio = row.querySelector('input[type="radio"]:checked');
     if (selectedRadio && (selectedRadio.value === 'yes' || selectedRadio.value === 'ifneeded')) {
-      updatePerDateInstrumentsForDate(dateStr);
+      rebuildDateInstruments(dateStr, upfrontInstruments);
     }
   });
 }
@@ -372,13 +437,8 @@ function updatePerDateInstrumentsForDate(dateStr) {
     document.querySelectorAll('.upfront-instrument:checked')
   ).map(cb => cb.value);
 
-  // Pre-check those instruments for this date
-  const instrumentCheckboxes = document.querySelectorAll(`input[name="instrument-${dateStr}"]`);
-  instrumentCheckboxes.forEach(cb => {
-    if (upfrontInstruments.includes(cb.value)) {
-      cb.checked = true;
-    }
-  });
+  // Rebuild instruments for this date
+  rebuildDateInstruments(dateStr, upfrontInstruments);
 }
 
 function loadPreviousResponse(participantName, poll) {
