@@ -58,6 +58,9 @@ function initCreatePage() {
   const startDateInput = document.getElementById('start-date');
   const numDatesInput = document.getElementById('num-dates');
 
+  // Display existing poll history
+  displayPollHistory();
+
   // Default: next Sunday, 8 weeks
   startDateInput.value = getNextSunday();
 
@@ -134,6 +137,17 @@ function initCreatePage() {
 
       const shareUrl = `${window.location.origin}${data.url}`;
       document.getElementById('share-url').value = shareUrl;
+
+      // Save poll to localStorage
+      savePollToHistory({
+        id: data.id,
+        title: payload.title,
+        url: shareUrl,
+        createdAt: new Date().toISOString()
+      });
+
+      // Refresh poll history display
+      displayPollHistory();
 
       document.getElementById('copy-btn').addEventListener('click', () => {
         navigator.clipboard.writeText(shareUrl);
@@ -528,4 +542,130 @@ function renderResults(poll) {
         : '');
     summaryRow.appendChild(td);
   });
+
+  // Initialize export button
+  initExportButton(poll);
 }
+
+
+// --- Poll History Functions ---
+
+function savePollToHistory(poll) {
+  const polls = JSON.parse(localStorage.getItem("createdPolls") || "[]");
+  polls.unshift(poll); // Add to beginning
+  localStorage.setItem("createdPolls", JSON.stringify(polls.slice(0, 20))); // Keep last 20
+}
+
+function displayPollHistory() {
+  const polls = JSON.parse(localStorage.getItem("createdPolls") || "[]");
+  const historySection = document.getElementById("poll-history");
+  const pollList = document.getElementById("poll-list");
+
+  if (polls.length === 0) {
+    historySection.classList.add("hidden");
+    return;
+  }
+
+  historySection.classList.remove("hidden");
+  pollList.innerHTML = "";
+
+  polls.forEach(poll => {
+    const item = document.createElement("div");
+    item.className = "poll-item";
+    
+    const info = document.createElement("div");
+    const title = document.createElement("div");
+    title.className = "poll-item-title";
+    title.textContent = poll.title;
+    
+    const date = document.createElement("div");
+    date.className = "poll-item-date";
+    date.textContent = new Date(poll.createdAt).toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+    
+    info.appendChild(title);
+    info.appendChild(date);
+    
+    const link = document.createElement("a");
+    link.className = "poll-item-link";
+    link.href = poll.url;
+    link.textContent = "Voir le sondage";
+    
+    item.appendChild(info);
+    item.appendChild(link);
+    pollList.appendChild(item);
+  });
+}
+
+// --- Export Functions ---
+
+function initExportButton(poll) {
+  const exportBtn = document.getElementById("export-btn");
+  if (\!exportBtn) return;
+
+  // Show export button when there are responses
+  if (poll.responses.length > 0) {
+    exportBtn.classList.remove("hidden");
+  }
+
+  exportBtn.addEventListener("click", () => {
+    exportToGoogleSheets(poll);
+  });
+}
+
+function exportToGoogleSheets(poll) {
+  // Generate CSV data compatible with Google Sheets
+  const lines = [];
+  
+  // Header row
+  const headers = ["Date", "Participant"];
+  poll.instruments.forEach(instrument => {
+    headers.push(instrument);
+  });
+  lines.push(headers.join("	"));
+  
+  // Data rows - one row per date per participant
+  poll.dates.forEach(dateStr => {
+    const formattedDate = formatDateDisplay(dateStr);
+    
+    poll.responses.forEach(response => {
+      const availability = response.answers[dateStr];
+      
+      // Only include if participant is available (yes or ifneeded)
+      if (availability === "yes" || availability === "ifneeded") {
+        const row = [formattedDate, response.name];
+        
+        // Add checkmarks for each instrument
+        poll.instruments.forEach(instrument => {
+          const hasInstrument = response.instruments[dateStr]?.includes(instrument);
+          row.push(hasInstrument ? "✓" : "");
+        });
+        
+        lines.push(row.join("	"));
+      }
+    });
+    
+    // Empty row between dates for readability
+    lines.push("");
+  });
+  
+  // Create downloadable file
+  const tsvContent = lines.join("
+");
+  const blob = new Blob([tsvContent], { type: "text/tab-separated-values;charset=utf-8;" });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute("href", url);
+  link.setAttribute("download", `${poll.title.replace(/[^a-z0-9]/gi, "_")}_export.tsv`);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
