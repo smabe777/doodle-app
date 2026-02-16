@@ -711,6 +711,20 @@ function displayPollHistory() {
 
 async function deletePoll(poll) {
   try {
+    // Check if poll has deletion token (newer polls only)
+    if (!poll.deletionToken) {
+      // Old poll without token - can only remove from localStorage
+      if (confirm(`Ce sondage a été créé avant la mise en place du système de suppression sécurisé.\n\nVoulez-vous le retirer de votre liste locale ?\n(Le sondage restera accessible via son URL)`)) {
+        const polls = JSON.parse(localStorage.getItem("createdPolls") || "[]");
+        const updatedPolls = polls.filter(p => p.id !== poll.id);
+        localStorage.setItem("createdPolls", JSON.stringify(updatedPolls));
+        displayPollHistory();
+        alert('Sondage retiré de votre liste locale.');
+      }
+      return;
+    }
+
+    // New poll with token - can delete from database
     const res = await fetch(`/api/polls/${poll.id}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -731,7 +745,7 @@ async function deletePoll(poll) {
     // Refresh display
     displayPollHistory();
 
-    alert('Sondage supprimé avec succès.');
+    alert('Sondage supprimé avec succès de la base de données.');
   } catch (err) {
     alert('Erreur lors de la suppression du sondage : ' + err.message);
   }
