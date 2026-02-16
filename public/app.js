@@ -351,6 +351,18 @@ function buildAvailabilityGrid(dates, instruments) {
             document.querySelectorAll('.upfront-instrument:checked')
           ).map(cb => cb.value);
 
+          // Check if at least one instrument is selected upfront
+          if (upfrontInstruments.length === 0) {
+            alert('Veuillez d\'abord sélectionner au moins un instrument dans "Vos instruments" avant de choisir "Oui" ou "Si nécessaire".');
+            // Revert to "Non"
+            const noRadio = row.querySelector(`input[name="answer-${dateStr}"][value="no"]`);
+            if (noRadio) {
+              noRadio.checked = true;
+            }
+            instrumentsDiv.style.display = 'none';
+            return;
+          }
+
           // Rebuild instruments div with only upfront instruments
           rebuildDateInstruments(dateStr, upfrontInstruments);
           instrumentsDiv.style.display = 'block';
