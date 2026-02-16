@@ -606,7 +606,7 @@ function displayPollHistory() {
 
 function initExportButton(poll) {
   const exportBtn = document.getElementById("export-btn");
-  if (\!exportBtn) return;
+  if (!exportBtn) return;
 
   // Show export button when there are responses
   if (poll.responses.length > 0) {
@@ -655,8 +655,7 @@ function exportToGoogleSheets(poll) {
   });
   
   // Create downloadable file
-  const tsvContent = lines.join("
-");
+  const tsvContent = lines.join("\n");
   const blob = new Blob([tsvContent], { type: "text/tab-separated-values;charset=utf-8;" });
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
