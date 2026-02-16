@@ -1,0 +1,26 @@
+pmOdAfd6JuOLlft9
+mongodb+srv://rodriguelima_db_user:pmOdAfd6JuOLlft9@cluster0.edcskbz.mongodb.net/
+
+Cosette J
+Duncan B
+Fabrice D
+Jean K
+Jeannie R
+Jonatan C
+Lena K
+Rodrigo R
+Rodrigue LI
+Samuel VC
+Sara M
+Yann O
+Timothée K
+Keziah S
+Sam P
+
+
+Voix1
+Voix2
+Piano
+Guitare
+Percu
+Instrument mélodique

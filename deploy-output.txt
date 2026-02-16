@@ -1,0 +1,18 @@
+This folder isn't linked to a site yet
+? What would you like to do? (Use arrow keys)
+❯ Link this directory to an existing site 
+  +  Create & configure a new site [35D[35C[2K[1A[2K[1A[2K[G? What would you like to do? Link this directory to an existing site[68D[68C
+
+netlify link will connect this folder to a site on Netlify
+
+? How do you want to link this folder to a site? (Use arrow keys)
+❯ Use current git remote origin (https://github.com/smabe777/doodle-app) 
+  Search by full or partial site name 
+  Choose from a list of your recently updated sites 
+  Enter a site ID [18D[18CWarning: Detected unsettled top-level await at file:///Users/rod777/projects/doodle-app/node_modules/netlify-cli/bin/run.js:28
+  await runProgram(program, argv)
+  ^
+
+
+
+
