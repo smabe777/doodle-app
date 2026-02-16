@@ -3,10 +3,17 @@
   "version": "1.0.0",
   "description": "A lightweight Doodle-like scheduling poll",
   "main": "server.js",
+  "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "netlify dev",
+    "build": "echo 'No build required'",
+    "deploy": "netlify deploy --prod"
   },
   "dependencies": {
     "mongodb": "^6.3.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
   }
 }

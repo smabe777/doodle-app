@@ -1,0 +1,21 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# Redirect API calls to serverless functions
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# SPA-style routing for poll pages
+[[redirects]]
+  from = "/poll/*"
+  to = "/poll.html"
+  status = 200
+
+# Fallback to index
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
