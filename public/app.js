@@ -712,8 +712,31 @@ function displayPollHistory() {
     editBtn.style.cursor = "pointer";
     editBtn.addEventListener("click", () => toggleEditForm(poll, item, editBtn));
 
+    // Composition button
+    const compositionBtn = document.createElement("button");
+    compositionBtn.className = "poll-item-link";
+    compositionBtn.textContent = "Composition";
+    compositionBtn.style.cursor = "pointer";
+    compositionBtn.addEventListener("click", async () => {
+      compositionBtn.textContent = "Calcul...";
+      compositionBtn.disabled = true;
+      try {
+        const res = await fetch(`/api/polls/${poll.id}`);
+        if (!res.ok) throw new Error("Sondage introuvable");
+        const fullPoll = await res.json();
+        const composition = computeComposition(fullPoll);
+        exportComposition(fullPoll, composition);
+      } catch (err) {
+        alert("Erreur lors du calcul de composition : " + err.message);
+      } finally {
+        compositionBtn.textContent = "Composition";
+        compositionBtn.disabled = false;
+      }
+    });
+
     buttonsContainer.appendChild(adminLink);
     buttonsContainer.appendChild(shareBtn);
+    buttonsContainer.appendChild(compositionBtn);
     buttonsContainer.appendChild(editBtn);
     buttonsContainer.appendChild(deleteBtn);
 
@@ -938,6 +961,127 @@ function exportToGoogleSheets(poll) {
   
   link.setAttribute("href", url);
   link.setAttribute("download", `${poll.title.replace(/[^a-z0-9]/gi, "_")}_export.tsv`);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// --- Composition Functions ---
+
+// Bipartite matching via augmenting paths (DFS).
+// graph: { instrument -> [participantName, ...] } (ordered by preference)
+// Returns: { instrument -> participantName }
+function findMaxMatching(graph) {
+  const matchPart = {}; // participant -> instrument currently matched to
+  const matchInstr = {}; // instrument -> participant currently matched to
+
+  function dfs(instr, visited) {
+    for (const part of (graph[instr] || [])) {
+      if (visited[part]) continue;
+      visited[part] = true;
+      if (!matchPart[part] || dfs(matchPart[part], visited)) {
+        matchPart[part] = instr;
+        matchInstr[instr] = part;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Process most-constrained instruments first (fewest candidates)
+  const instruments = Object.keys(graph).sort((a, b) => graph[a].length - graph[b].length);
+  for (const instr of instruments) {
+    dfs(instr, {});
+  }
+  return matchInstr;
+}
+
+function computeComposition(poll) {
+  // totalAssignments tracks how many sessions each participant has been assigned to
+  const totalAssignments = {};
+  poll.responses.forEach(r => { totalAssignments[r.name] = 0; });
+
+  const compositionByDate = {};
+
+  for (const dateStr of poll.dates) {
+    // Build availability lookup for this date
+    const participantAvailability = {}; // name -> 'yes' | 'ifneeded'
+    for (const response of poll.responses) {
+      const avail = response.answers[dateStr];
+      if (avail === 'yes' || avail === 'ifneeded') {
+        participantAvailability[response.name] = avail;
+      }
+    }
+
+    // Build candidate list per instrument
+    const graph = {};
+    for (const instrument of poll.instruments) {
+      const yes = [];
+      const ifneeded = [];
+      for (const response of poll.responses) {
+        const avail = response.answers[dateStr];
+        const dateInstruments = response.instruments?.[dateStr] || [];
+        if (!dateInstruments.includes(instrument)) continue;
+        if (avail === 'yes') yes.push(response.name);
+        else if (avail === 'ifneeded') ifneeded.push(response.name);
+      }
+      // Sort by load (fewest assignments first) for equitable distribution
+      const byLoad = (a, b) => (totalAssignments[a] || 0) - (totalAssignments[b] || 0);
+      yes.sort(byLoad);
+      ifneeded.sort(byLoad);
+      const candidates = [...yes, ...ifneeded];
+      if (candidates.length > 0) graph[instrument] = candidates;
+    }
+
+    // Find maximum matching
+    const matching = findMaxMatching(graph);
+
+    // Build result with certainty flag
+    const dateResult = {};
+    for (const [instr, name] of Object.entries(matching)) {
+      dateResult[instr] = { name, certain: participantAvailability[name] === 'yes' };
+    }
+    compositionByDate[dateStr] = dateResult;
+
+    // Update load counters for next iteration
+    for (const { name } of Object.values(dateResult)) {
+      totalAssignments[name] = (totalAssignments[name] || 0) + 1;
+    }
+  }
+
+  return compositionByDate;
+}
+
+function exportComposition(poll, composition) {
+  const lines = [];
+
+  // Header: Date | Instrument1 | Instrument2 | ...
+  const headers = ["Date", ...poll.instruments];
+  lines.push(headers.join("\t"));
+
+  for (const dateStr of poll.dates) {
+    const formattedDate = formatDateDisplay(dateStr);
+    const dateResult = composition[dateStr] || {};
+    const row = [formattedDate];
+    for (const instrument of poll.instruments) {
+      const assignment = dateResult[instrument];
+      if (!assignment) {
+        row.push("");
+      } else if (assignment.certain) {
+        row.push(assignment.name);
+      } else {
+        row.push(`[${assignment.name}]`);
+      }
+    }
+    lines.push(row.join("\t"));
+  }
+
+  const tsvContent = lines.join("\n");
+  const blob = new Blob([tsvContent], { type: "text/tab-separated-values;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.setAttribute("href", URL.createObjectURL(blob));
+  link.setAttribute("download", `${poll.title.replace(/[^a-z0-9]/gi, "_")}_composition.tsv`);
   link.style.visibility = "hidden";
   document.body.appendChild(link);
   link.click();
