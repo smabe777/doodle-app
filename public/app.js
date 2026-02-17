@@ -473,6 +473,11 @@ function loadPreviousResponse(participantName, poll) {
     });
   }
 
+  // Get the upfront instruments that are now checked (to use for rebuilding per-date)
+  const upfrontInstruments = Array.from(
+    document.querySelectorAll('.upfront-instrument:checked')
+  ).map(cb => cb.value);
+
   // Load answers for each date
   poll.dates.forEach(dateStr => {
     const answer = previousResponse.answers[dateStr];
@@ -486,16 +491,17 @@ function loadPreviousResponse(participantName, poll) {
         if (answer === 'yes' || answer === 'ifneeded') {
           const instrumentsDiv = document.getElementById(`instruments-${dateStr}`);
           if (instrumentsDiv) {
+            // Rebuild the instruments div with the upfront instruments
+            rebuildDateInstruments(dateStr, upfrontInstruments);
             instrumentsDiv.style.display = 'block';
           }
 
-          // Load instruments for this date
-          if (previousResponse.instruments && previousResponse.instruments[dateStr]) {
-            previousResponse.instruments[dateStr].forEach(instrument => {
-              const cb = document.querySelector(`input[name="instrument-${dateStr}"][value="${instrument}"]`);
-              if (cb) {
-                cb.checked = true;
-              }
+          // Restore previously selected instruments for this date
+          const savedInstruments = previousResponse.instruments?.[dateStr] || [];
+          if (savedInstruments.length > 0) {
+            // Uncheck all, then check only the saved ones
+            document.querySelectorAll(`input[name="instrument-${dateStr}"]`).forEach(cb => {
+              cb.checked = savedInstruments.includes(cb.value);
             });
           }
         }
