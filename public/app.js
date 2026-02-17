@@ -183,7 +183,7 @@ async function initPollPage(pollId) {
 
     buildParticipantSelect(poll.participants, poll);
     buildUpfrontInstruments(poll.instruments);
-    buildAvailabilityGrid(poll.dates, poll.instruments);
+    buildAvailabilityGrid(poll.dates);
     renderResults(poll);
 
     respondForm.addEventListener('submit', async (e) => {
@@ -311,7 +311,7 @@ function buildUpfrontInstruments(instruments) {
   });
 }
 
-function buildAvailabilityGrid(dates, instruments) {
+function buildAvailabilityGrid(dates) {
   const grid = document.getElementById('availability-grid');
   grid.innerHTML = '';
 
@@ -705,8 +705,16 @@ function displayPollHistory() {
       }
     });
 
+    // Edit button
+    const editBtn = document.createElement("button");
+    editBtn.className = "poll-item-link";
+    editBtn.textContent = "Modifier";
+    editBtn.style.cursor = "pointer";
+    editBtn.addEventListener("click", () => toggleEditForm(poll, item, editBtn));
+
     buttonsContainer.appendChild(adminLink);
     buttonsContainer.appendChild(shareBtn);
+    buttonsContainer.appendChild(editBtn);
     buttonsContainer.appendChild(deleteBtn);
 
     item.appendChild(info);
@@ -754,6 +762,111 @@ async function deletePoll(poll) {
     alert('Sondage supprimé avec succès de la base de données.');
   } catch (err) {
     alert('Erreur lors de la suppression du sondage : ' + err.message);
+  }
+}
+
+// --- Edit Poll Functions ---
+
+async function toggleEditForm(poll, item, editBtn) {
+  // If form already open, close it
+  const existingForm = item.querySelector('.edit-poll-form');
+  if (existingForm) {
+    existingForm.remove();
+    editBtn.textContent = "Modifier";
+    return;
+  }
+
+  editBtn.textContent = "Annuler";
+
+  // Fetch current poll data from server
+  let currentPoll;
+  try {
+    const res = await fetch(`/api/polls/${poll.id}`);
+    if (!res.ok) throw new Error('Sondage introuvable');
+    currentPoll = await res.json();
+  } catch {
+    alert('Impossible de charger les données du sondage.');
+    editBtn.textContent = "Modifier";
+    return;
+  }
+
+  const form = document.createElement('div');
+  form.className = 'edit-poll-form';
+  form.style.cssText = 'margin-top:16px;padding:16px;background:#222;border-radius:8px;border:1px solid #333;';
+
+  form.innerHTML = `
+    <p style="color:#aaa;font-size:0.85rem;margin-bottom:12px;">Ajoutez des participants ou instruments. Les données existantes sont conservées.</p>
+    <div style="margin-bottom:12px;">
+      <label style="display:block;color:#d4d4d4;font-size:0.85rem;margin-bottom:6px;font-weight:500;">Participants actuels</label>
+      <p style="color:#888;font-size:0.85rem;margin:0 0 8px;">${currentPoll.participants.join(', ')}</p>
+      <label style="display:block;color:#d4d4d4;font-size:0.85rem;margin-bottom:6px;font-weight:500;">Nouveaux participants (un par ligne)</label>
+      <textarea id="edit-new-participants" rows="3" style="width:100%;padding:10px;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#d4d4d4;font-family:inherit;font-size:0.9rem;" placeholder="Nouveau participant..."></textarea>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="display:block;color:#d4d4d4;font-size:0.85rem;margin-bottom:6px;font-weight:500;">Instruments actuels</label>
+      <p style="color:#888;font-size:0.85rem;margin:0 0 8px;">${currentPoll.instruments.join(', ')}</p>
+      <label style="display:block;color:#d4d4d4;font-size:0.85rem;margin-bottom:6px;font-weight:500;">Nouveaux instruments (un par ligne)</label>
+      <textarea id="edit-new-instruments" rows="3" style="width:100%;padding:10px;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#d4d4d4;font-family:inherit;font-size:0.9rem;" placeholder="Nouvel instrument..."></textarea>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button id="edit-save-btn" style="padding:10px 20px;background:#e8e8e8;color:#0f0f0f;border:none;border-radius:6px;cursor:pointer;font-weight:500;font-family:inherit;">Enregistrer</button>
+      <button id="edit-cancel-btn" style="padding:10px 20px;background:transparent;color:#bbb;border:1px solid #444;border-radius:6px;cursor:pointer;font-family:inherit;">Annuler</button>
+    </div>
+    <p id="edit-result" style="margin-top:10px;font-size:0.85rem;color:#aaa;display:none;"></p>
+  `;
+
+  item.appendChild(form);
+
+  form.querySelector('#edit-cancel-btn').addEventListener('click', () => {
+    form.remove();
+    editBtn.textContent = "Modifier";
+  });
+
+  form.querySelector('#edit-save-btn').addEventListener('click', async () => {
+    const newParticipants = form.querySelector('#edit-new-participants').value
+      .split('\n').map(p => p.trim()).filter(p => p.length > 0);
+    const newInstruments = form.querySelector('#edit-new-instruments').value
+      .split('\n').map(i => i.trim()).filter(i => i.length > 0);
+
+    if (newParticipants.length === 0 && newInstruments.length === 0) {
+      alert('Ajoutez au moins un participant ou un instrument.');
+      return;
+    }
+
+    const result = await editPoll(poll, newParticipants, newInstruments);
+    if (result) {
+      const resultEl = form.querySelector('#edit-result');
+      const added = [];
+      if (result.addedParticipants.length > 0) added.push(`${result.addedParticipants.length} participant(s)`);
+      if (result.addedInstruments.length > 0) added.push(`${result.addedInstruments.length} instrument(s)`);
+      resultEl.textContent = `✓ Ajouté : ${added.join(' et ')}`;
+      resultEl.style.display = 'block';
+      form.querySelector('#edit-new-participants').value = '';
+      form.querySelector('#edit-new-instruments').value = '';
+      // Update current lists in form
+      form.querySelectorAll('p')[0].textContent = result.participants.join(', ');
+      form.querySelectorAll('p')[1].textContent = result.instruments.join(', ');
+    }
+  });
+}
+
+async function editPoll(poll, newParticipants, newInstruments) {
+  try {
+    const res = await fetch(`/api/polls/${poll.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deletionToken: poll.deletionToken,
+        newParticipants,
+        newInstruments,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur lors de la modification');
+    return data;
+  } catch (err) {
+    alert('Erreur lors de la modification : ' + err.message);
+    return null;
   }
 }
 
