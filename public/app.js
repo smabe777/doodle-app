@@ -916,10 +916,8 @@ function exportToGoogleSheets(poll) {
       if (availability === "yes" || availability === "ifneeded") {
         const row = [formattedDate, response.name];
 
-        // Add checkmarks for each instrument (per-date selection, fallback to upfront)
-        const dateInstruments = response.instruments?.[dateStr]?.length > 0
-          ? response.instruments[dateStr]
-          : (response.upfrontInstruments || []);
+        // Add checkmarks for each instrument (per-date only, matches summary table)
+        const dateInstruments = response.instruments?.[dateStr] || [];
         poll.instruments.forEach(instrument => {
           row.push(dateInstruments.includes(instrument) ? "✓" : "");
         });
