@@ -1,6 +1,6 @@
 import { connectToDatabase } from './db-connection.mjs';
 
-const NOTIFY_EMAIL = 'rodrigue.lima@gmail.com';
+const NOTIFY_EMAIL = 'rod777@belgacom.net';
 
 async function sendEmailNotification(poll, response, isUpdate) {
   const apiKey = process.env.RESEND_API_KEY;
