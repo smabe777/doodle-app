@@ -49,7 +49,7 @@ async function sendEmailNotification(poll, response, isUpdate) {
     </div>
   `;
 
-  await fetch('https://api.resend.com/emails', {
+  const resendRes = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -62,6 +62,12 @@ async function sendEmailNotification(poll, response, isUpdate) {
       html,
     }),
   });
+  const resendData = await resendRes.json();
+  if (!resendRes.ok) {
+    console.error('Resend API error:', JSON.stringify(resendData));
+  } else {
+    console.log('Email sent successfully, id:', resendData.id);
+  }
 }
 
 export default async (req, context) => {
@@ -142,10 +148,12 @@ export default async (req, context) => {
       { $set: { responses: poll.responses } }
     );
 
-    // Send email notification (fire and forget - don't block response)
-    sendEmailNotification(poll, response, existingIndex >= 0).catch(err => {
-      console.error('Email notification failed:', err);
-    });
+    // Send email notification (awaited so it completes before function terminates)
+    try {
+      await sendEmailNotification(poll, response, existingIndex >= 0);
+    } catch (emailErr) {
+      console.error('Email notification failed:', emailErr);
+    }
 
     // Remove MongoDB _id field from response
     delete poll._id;
