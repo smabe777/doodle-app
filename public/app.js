@@ -969,124 +969,101 @@ function exportToGoogleSheets(poll) {
 
 // --- Composition Functions ---
 
-// Instruments that must be assigned first (case-insensitive match)
+// Priority instruments assigned first, in this order (case-insensitive)
 const COMPOSITION_PRIORITY = ['piano', 'guitare'];
 
-// Bipartite matching via augmenting paths (DFS).
-// graph: { instrument -> [participantName, ...] } (ordered by preference)
-// Returns: { instrument -> participantName }
-function findMaxMatching(graph) {
-  const matchPart = {}; // participant -> instrument currently matched to
-  const matchInstr = {}; // instrument -> participant currently matched to
-
-  function dfs(instr, visited) {
-    for (const part of (graph[instr] || [])) {
-      if (visited[part]) continue;
-      visited[part] = true;
-      if (!matchPart[part] || dfs(matchPart[part], visited)) {
-        matchPart[part] = instr;
-        matchInstr[instr] = part;
-        return true;
-      }
-    }
-    return false;
-  }
-
-  const isPriority = (i) => COMPOSITION_PRIORITY.some(p => i.toLowerCase() === p.toLowerCase());
-  const byConstraint = (a, b) => graph[a].length - graph[b].length;
-
-  // Priority instruments first (most constrained within group), then the rest
-  const priority = Object.keys(graph).filter(i => isPriority(i)).sort(byConstraint);
-  const rest = Object.keys(graph).filter(i => !isPriority(i)).sort(byConstraint);
-
-  for (const instr of [...priority, ...rest]) {
-    dfs(instr, {});
-  }
-  return matchInstr;
-}
-
 function computeComposition(poll) {
-  // Precompute total available sessions per person per instrument across the whole poll.
-  // Someone available less often for an instrument gets priority when they ARE available
-  // (diversity: involve more people rather than always the most available one).
-  const totalAvailForInstr = {}; // name -> { instrument -> count }
+  // Precompute remaining availability per person per instrument per date index.
+  // remainingAvail[name][instr][i] = number of sessions from index i onwards
+  // where this person can play this instrument (yes or ifneeded).
+  // Used for EDF (Earliest Deadline First): whoever has fewer future chances goes first.
+  const remainingAvail = {};
   poll.responses.forEach(r => {
-    totalAvailForInstr[r.name] = {};
-    for (const instrument of poll.instruments) {
-      let count = 0;
-      for (const d of poll.dates) {
-        const avail = r.answers[d];
-        const di = r.instruments?.[d] || [];
-        if ((avail === 'yes' || avail === 'ifneeded') && di.includes(instrument)) count++;
+    remainingAvail[r.name] = {};
+    for (const instr of poll.instruments) {
+      const arr = new Array(poll.dates.length).fill(0);
+      for (let i = poll.dates.length - 1; i >= 0; i--) {
+        const avail = r.answers[poll.dates[i]];
+        const di = r.instruments?.[poll.dates[i]] || [];
+        const here = ((avail === 'yes' || avail === 'ifneeded') && di.includes(instr)) ? 1 : 0;
+        arr[i] = here + (i + 1 < poll.dates.length ? arr[i + 1] : 0);
       }
-      totalAvailForInstr[r.name][instrument] = count;
+      remainingAvail[r.name][instr] = arr;
     }
   });
 
-  // Track assignments per instrument (rotation) and total (tiebreaker)
-  const instrAssignments = {};
-  const totalAssignments = {};
-  poll.responses.forEach(r => {
-    instrAssignments[r.name] = {};
-    totalAssignments[r.name] = 0;
-  });
+  const instrAssignments = {}; // name -> { instr -> times assigned to that instr }
+  poll.responses.forEach(r => { instrAssignments[r.name] = {}; });
 
+  // compositionByDate[dateStr][instr] = { name, certain }
   const compositionByDate = {};
+  // sessionAssigned[dateStr] = Set of names already assigned an instrument this session
+  const sessionAssigned = {};
+  for (const d of poll.dates) {
+    compositionByDate[d] = {};
+    sessionAssigned[d] = new Set();
+  }
 
-  for (const dateStr of poll.dates) {
-    // Build availability lookup for this date
-    const participantAvailability = {}; // name -> 'yes' | 'ifneeded'
-    for (const response of poll.responses) {
-      const avail = response.answers[dateStr];
-      if (avail === 'yes' || avail === 'ifneeded') {
-        participantAvailability[response.name] = avail;
-      }
-    }
+  // Build processing order: priority instruments first (piano → guitare),
+  // then other instruments sorted by total eligible players (most constrained first).
+  const isPriority = i => COMPOSITION_PRIORITY.some(p => i.toLowerCase() === p.toLowerCase());
 
-    // Build candidate list per instrument
-    const graph = {};
-    for (const instrument of poll.instruments) {
-      const yes = [];
-      const ifneeded = [];
+  const priorityInstruments = COMPOSITION_PRIORITY
+    .map(p => poll.instruments.find(i => i.toLowerCase() === p.toLowerCase()))
+    .filter(Boolean);
+
+  const otherInstruments = poll.instruments
+    .filter(i => !isPriority(i))
+    .sort((a, b) => {
+      // most constrained (fewest eligible players across any session) first
+      const eligible = instr => poll.responses.filter(r =>
+        poll.dates.some(d => {
+          const avail = r.answers[d];
+          return (avail === 'yes' || avail === 'ifneeded') && (r.instruments?.[d] || []).includes(instr);
+        })
+      ).length;
+      return eligible(a) - eligible(b);
+    });
+
+  // Outer loop: instrument (priority first). For each instrument, sweep all sessions.
+  // This ensures piano is fully distributed before guitar takes anyone, etc.
+  for (const instrument of [...priorityInstruments, ...otherInstruments]) {
+    poll.dates.forEach((dateStr, dateIdx) => {
+      // Candidates: available for this instrument, not yet assigned this session
+      const yes = [], ifneeded = [];
       for (const response of poll.responses) {
+        if (sessionAssigned[dateStr].has(response.name)) continue;
         const avail = response.answers[dateStr];
-        const dateInstruments = response.instruments?.[dateStr] || [];
-        if (!dateInstruments.includes(instrument)) continue;
+        const di = response.instruments?.[dateStr] || [];
+        if (!di.includes(instrument)) continue;
         if (avail === 'yes') yes.push(response.name);
         else if (avail === 'ifneeded') ifneeded.push(response.name);
       }
-      // Sort priority:
-      // 1. Fewest total available sessions for this instrument (scarcest first → diversity)
+      if (yes.length === 0 && ifneeded.length === 0) return;
+
+      // EDF sort within each certainty group:
+      // 1. Fewest remaining sessions for this instrument (will run out of chances sooner)
       // 2. Fewest times already assigned to this instrument (rotation)
-      // 3. Fewest total assignments overall (tiebreaker)
-      const byDiversity = (a, b) => {
-        const availDiff = (totalAvailForInstr[a]?.[instrument] || 0) - (totalAvailForInstr[b]?.[instrument] || 0);
-        if (availDiff !== 0) return availDiff;
-        const instrDiff = (instrAssignments[a]?.[instrument] || 0) - (instrAssignments[b]?.[instrument] || 0);
+      // 3. Alphabetical (stable tiebreaker)
+      const byEDF = (a, b) => {
+        const remDiff = (remainingAvail[a]?.[instrument]?.[dateIdx] || 0)
+                      - (remainingAvail[b]?.[instrument]?.[dateIdx] || 0);
+        if (remDiff !== 0) return remDiff;
+        const instrDiff = (instrAssignments[a]?.[instrument] || 0)
+                        - (instrAssignments[b]?.[instrument] || 0);
         if (instrDiff !== 0) return instrDiff;
-        return (totalAssignments[a] || 0) - (totalAssignments[b] || 0);
+        return a.localeCompare(b);
       };
-      yes.sort(byDiversity);
-      ifneeded.sort(byDiversity);
-      const candidates = [...yes, ...ifneeded];
-      if (candidates.length > 0) graph[instrument] = candidates;
-    }
+      yes.sort(byEDF);
+      ifneeded.sort(byEDF);
 
-    // Find maximum matching
-    const matching = findMaxMatching(graph);
+      const chosen = yes.length > 0 ? yes[0] : ifneeded[0];
+      const certain = yes.length > 0;
 
-    // Build result with certainty flag
-    const dateResult = {};
-    for (const [instr, name] of Object.entries(matching)) {
-      dateResult[instr] = { name, certain: participantAvailability[name] === 'yes' };
-    }
-    compositionByDate[dateStr] = dateResult;
-
-    // Update per-instrument and total counters for next iteration
-    for (const [instr, { name }] of Object.entries(dateResult)) {
-      instrAssignments[name][instr] = (instrAssignments[name][instr] || 0) + 1;
-      totalAssignments[name] = (totalAssignments[name] || 0) + 1;
-    }
+      compositionByDate[dateStr][instrument] = { name: chosen, certain };
+      sessionAssigned[dateStr].add(chosen);
+      instrAssignments[chosen][instrument] = (instrAssignments[chosen][instrument] || 0) + 1;
+    });
   }
 
   return compositionByDate;
