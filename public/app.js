@@ -969,6 +969,9 @@ function exportToGoogleSheets(poll) {
 
 // --- Composition Functions ---
 
+// Instruments that must be assigned first (case-insensitive match)
+const COMPOSITION_PRIORITY = ['piano', 'guitare'];
+
 // Bipartite matching via augmenting paths (DFS).
 // graph: { instrument -> [participantName, ...] } (ordered by preference)
 // Returns: { instrument -> participantName }
@@ -989,9 +992,14 @@ function findMaxMatching(graph) {
     return false;
   }
 
-  // Process most-constrained instruments first (fewest candidates)
-  const instruments = Object.keys(graph).sort((a, b) => graph[a].length - graph[b].length);
-  for (const instr of instruments) {
+  const isPriority = (i) => COMPOSITION_PRIORITY.some(p => i.toLowerCase() === p.toLowerCase());
+  const byConstraint = (a, b) => graph[a].length - graph[b].length;
+
+  // Priority instruments first (most constrained within group), then the rest
+  const priority = Object.keys(graph).filter(i => isPriority(i)).sort(byConstraint);
+  const rest = Object.keys(graph).filter(i => !isPriority(i)).sort(byConstraint);
+
+  for (const instr of [...priority, ...rest]) {
     dfs(instr, {});
   }
   return matchInstr;
