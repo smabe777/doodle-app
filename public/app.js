@@ -1006,9 +1006,14 @@ function findMaxMatching(graph) {
 }
 
 function computeComposition(poll) {
-  // totalAssignments tracks how many sessions each participant has been assigned to
+  // Track assignments per instrument (primary) and total (tiebreaker)
+  // instrAssignments[name][instrument] = number of times assigned to that instrument
+  const instrAssignments = {};
   const totalAssignments = {};
-  poll.responses.forEach(r => { totalAssignments[r.name] = 0; });
+  poll.responses.forEach(r => {
+    instrAssignments[r.name] = {};
+    totalAssignments[r.name] = 0;
+  });
 
   const compositionByDate = {};
 
@@ -1034,8 +1039,11 @@ function computeComposition(poll) {
         if (avail === 'yes') yes.push(response.name);
         else if (avail === 'ifneeded') ifneeded.push(response.name);
       }
-      // Sort by load (fewest assignments first) for equitable distribution
-      const byLoad = (a, b) => (totalAssignments[a] || 0) - (totalAssignments[b] || 0);
+      // Sort by instrument-specific count first, total count as tiebreaker
+      const byLoad = (a, b) => {
+        const instrDiff = (instrAssignments[a]?.[instrument] || 0) - (instrAssignments[b]?.[instrument] || 0);
+        return instrDiff !== 0 ? instrDiff : (totalAssignments[a] || 0) - (totalAssignments[b] || 0);
+      };
       yes.sort(byLoad);
       ifneeded.sort(byLoad);
       const candidates = [...yes, ...ifneeded];
@@ -1052,8 +1060,9 @@ function computeComposition(poll) {
     }
     compositionByDate[dateStr] = dateResult;
 
-    // Update load counters for next iteration
-    for (const { name } of Object.values(dateResult)) {
+    // Update per-instrument and total counters for next iteration
+    for (const [instr, { name }] of Object.entries(dateResult)) {
+      instrAssignments[name][instr] = (instrAssignments[name][instr] || 0) + 1;
       totalAssignments[name] = (totalAssignments[name] || 0) + 1;
     }
   }
