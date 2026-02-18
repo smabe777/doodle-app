@@ -1006,8 +1006,24 @@ function findMaxMatching(graph) {
 }
 
 function computeComposition(poll) {
-  // Track assignments per instrument (primary) and total (tiebreaker)
-  // instrAssignments[name][instrument] = number of times assigned to that instrument
+  // Precompute total available sessions per person per instrument across the whole poll.
+  // Someone available less often for an instrument gets priority when they ARE available
+  // (diversity: involve more people rather than always the most available one).
+  const totalAvailForInstr = {}; // name -> { instrument -> count }
+  poll.responses.forEach(r => {
+    totalAvailForInstr[r.name] = {};
+    for (const instrument of poll.instruments) {
+      let count = 0;
+      for (const d of poll.dates) {
+        const avail = r.answers[d];
+        const di = r.instruments?.[d] || [];
+        if ((avail === 'yes' || avail === 'ifneeded') && di.includes(instrument)) count++;
+      }
+      totalAvailForInstr[r.name][instrument] = count;
+    }
+  });
+
+  // Track assignments per instrument (rotation) and total (tiebreaker)
   const instrAssignments = {};
   const totalAssignments = {};
   poll.responses.forEach(r => {
@@ -1039,13 +1055,19 @@ function computeComposition(poll) {
         if (avail === 'yes') yes.push(response.name);
         else if (avail === 'ifneeded') ifneeded.push(response.name);
       }
-      // Sort by instrument-specific count first, total count as tiebreaker
-      const byLoad = (a, b) => {
+      // Sort priority:
+      // 1. Fewest total available sessions for this instrument (scarcest first → diversity)
+      // 2. Fewest times already assigned to this instrument (rotation)
+      // 3. Fewest total assignments overall (tiebreaker)
+      const byDiversity = (a, b) => {
+        const availDiff = (totalAvailForInstr[a]?.[instrument] || 0) - (totalAvailForInstr[b]?.[instrument] || 0);
+        if (availDiff !== 0) return availDiff;
         const instrDiff = (instrAssignments[a]?.[instrument] || 0) - (instrAssignments[b]?.[instrument] || 0);
-        return instrDiff !== 0 ? instrDiff : (totalAssignments[a] || 0) - (totalAssignments[b] || 0);
+        if (instrDiff !== 0) return instrDiff;
+        return (totalAssignments[a] || 0) - (totalAssignments[b] || 0);
       };
-      yes.sort(byLoad);
-      ifneeded.sort(byLoad);
+      yes.sort(byDiversity);
+      ifneeded.sort(byDiversity);
       const candidates = [...yes, ...ifneeded];
       if (candidates.length > 0) graph[instrument] = candidates;
     }
