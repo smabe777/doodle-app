@@ -23,3 +23,8 @@ Thumbs.db
 
 # Local Netlify folder
 .netlify
+
+# Sensitive files - never commit
+pwd.txt
+deploy-output.txt
+*.secret
