@@ -563,7 +563,7 @@ form#create-form {
 
 .planning-cell {
   padding: 8px 10px;
-  min-width: 120px;
+  min-width: 90px;
   vertical-align: middle;
   text-align: center;
 }
@@ -581,7 +581,6 @@ form#create-form {
 
 .planning-guest {
   color: #f0c060;
-  font-style: italic;
 }
 
 .planning-empty {

@@ -142,15 +142,13 @@ function renderTable() {
 function buildReadonlyCell(instrument, dateStr) {
   const assignment = currentPlanning?.[dateStr]?.[instrument];
   const span = document.createElement('span');
-  if (!assignment || !assignment.name) {
+  // Uncertain (ifneeded) entries are hidden in the public view — only confirmed and guests shown
+  if (!assignment || !assignment.name || (!assignment.certain && !assignment.isGuest)) {
     span.textContent = '—';
     span.className = 'planning-empty';
   } else if (assignment.isGuest) {
-    span.textContent = `★ ${assignment.name}`;
+    span.textContent = assignment.name; // just name in guest colour, no ★
     span.className = 'planning-guest';
-  } else if (!assignment.certain) {
-    span.textContent = `[${assignment.name}]`;
-    span.className = 'planning-uncertain';
   } else {
     span.textContent = assignment.name;
     span.className = 'planning-confirmed';
