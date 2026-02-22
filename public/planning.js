@@ -100,29 +100,29 @@ function renderTable() {
   const table = document.createElement('table');
   table.className = 'planning-table';
 
-  // Header: first cell = "Instrument", then one cell per date
+  // Header: first cell = "Date", then one cell per instrument
   const thead = table.createTHead();
   const headerRow = thead.insertRow();
-  const thInstr = document.createElement('th');
-  thInstr.textContent = 'Instrument';
-  thInstr.className = 'planning-instr-header';
-  headerRow.appendChild(thInstr);
-  for (const dateStr of dates) {
+  const thDate = document.createElement('th');
+  thDate.textContent = 'Date';
+  thDate.className = 'planning-instr-header';
+  headerRow.appendChild(thDate);
+  for (const instrument of instruments) {
     const th = document.createElement('th');
-    th.textContent = formatDate(dateStr);
+    th.textContent = instrument;
     headerRow.appendChild(th);
   }
 
-  // Body: one row per instrument
+  // Body: one row per session
   const tbody = table.createTBody();
-  for (const instrument of instruments) {
+  for (const dateStr of dates) {
     const row = tbody.insertRow();
-    const tdInstr = document.createElement('td');
-    tdInstr.textContent = instrument;
-    tdInstr.className = 'planning-instr-name';
-    row.appendChild(tdInstr);
+    const tdDate = document.createElement('td');
+    tdDate.textContent = formatDate(dateStr);
+    tdDate.className = 'planning-instr-name';
+    row.appendChild(tdDate);
 
-    for (const dateStr of dates) {
+    for (const instrument of instruments) {
       const td = document.createElement('td');
       td.className = 'planning-cell';
       if (isAdmin) {
