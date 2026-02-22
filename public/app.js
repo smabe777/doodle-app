@@ -186,6 +186,15 @@ async function initPollPage(pollId) {
     buildAvailabilityGrid(poll.dates);
     renderResults(poll);
 
+    // Show planning button only if a saved planning exists
+    if (poll.planning && Object.keys(poll.planning).length > 0) {
+      const planningBtn = document.getElementById('planning-btn');
+      if (planningBtn) {
+        planningBtn.href = `/planning.html?id=${pollId}&back=poll`;
+        planningBtn.classList.remove('hidden');
+      }
+    }
+
     respondForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -712,6 +721,12 @@ function displayPollHistory() {
     editBtn.style.cursor = "pointer";
     editBtn.addEventListener("click", () => toggleEditForm(poll, item, editBtn));
 
+    // Planning button (admin editable planning page)
+    const planningBtn = document.createElement("a");
+    planningBtn.className = "poll-item-link";
+    planningBtn.href = `/planning.html?id=${poll.id}&admin=true&back=admin`;
+    planningBtn.textContent = "Planning";
+
     // Composition button
     const compositionBtn = document.createElement("button");
     compositionBtn.className = "poll-item-link";
@@ -736,6 +751,7 @@ function displayPollHistory() {
 
     buttonsContainer.appendChild(adminLink);
     buttonsContainer.appendChild(shareBtn);
+    buttonsContainer.appendChild(planningBtn);
     buttonsContainer.appendChild(compositionBtn);
     buttonsContainer.appendChild(editBtn);
     buttonsContainer.appendChild(deleteBtn);

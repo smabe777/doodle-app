@@ -512,6 +512,138 @@ form#create-form {
   display: none !important;
 }
 
+/* Planning page */
+
+.planning-header {
+  margin-bottom: 24px;
+}
+
+.planning-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.planning-table-wrapper {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.planning-table {
+  width: auto;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #333;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.planning-instr-header,
+.planning-instr-name {
+  text-align: left;
+  white-space: nowrap;
+  font-weight: 600;
+  background: #1a1a1a;
+  color: #d4d4d4;
+  padding: 12px 16px;
+  border-right: 1px solid #333;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.planning-instr-header {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.planning-cell {
+  padding: 8px 10px;
+  min-width: 120px;
+  vertical-align: middle;
+  text-align: center;
+}
+
+/* Read-only cell text */
+.planning-confirmed {
+  color: #e8e8e8;
+  font-weight: 500;
+}
+
+.planning-uncertain {
+  color: #aaa;
+  font-style: italic;
+}
+
+.planning-guest {
+  color: #f0c060;
+  font-style: italic;
+}
+
+.planning-empty {
+  color: #555;
+}
+
+/* Edit cell */
+.edit-cell-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.planning-select {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 0.85rem;
+  border: 1px solid #333;
+  border-radius: 6px;
+  background: #1a1a1a;
+  color: #d4d4d4;
+  cursor: pointer;
+}
+
+.planning-select:focus {
+  outline: none;
+  border-color: #555;
+}
+
+.planning-guest-input {
+  padding: 5px 8px;
+  font-size: 0.85rem;
+  border: 1px solid #5a4a10;
+  border-radius: 6px;
+  background: #1a1200;
+  color: #f0c060;
+  width: 100%;
+}
+
+.planning-guest-input:focus {
+  outline: none;
+  border-color: #8a7020;
+}
+
+/* Legend */
+.planning-legend {
+  margin-top: 16px;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.legend-uncertain {
+  color: #aaa;
+  font-style: italic;
+}
+
+.legend-guest {
+  color: #f0c060;
+  font-style: italic;
+}
+
 /* Responsive */
 
 @media (max-width: 600px) {

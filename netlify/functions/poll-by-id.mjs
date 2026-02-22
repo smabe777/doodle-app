@@ -111,6 +111,18 @@ export default async (req, context) => {
         });
       }
 
+      // Save planning if provided
+      if (body.planning !== undefined) {
+        await db.collection('polls').updateOne(
+          { id: pollId },
+          { $set: { planning: body.planning } }
+        );
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
       // Merge new participants and instruments (deduplicate, case-insensitive for participants)
       const existingParticipantsLower = poll.participants.map(p => p.toLowerCase());
       const newParticipants = (body.newParticipants || [])

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planning</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="planning-header">
+      <button id="back-btn" class="back-link" style="background:none;border:none;cursor:pointer;font-size:0.9rem;color:#bbb;padding:0;margin-bottom:16px;display:inline-block;">← Retour</button>
+      <div class="planning-title-row">
+        <h1 id="planning-title">Planning</h1>
+        <div id="admin-controls" class="hidden" style="display:flex;gap:10px;align-items:center;">
+          <button id="compose-btn" class="btn btn-secondary">⚡ Composer</button>
+          <button id="save-btn" class="btn btn-primary">Sauvegarder</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="planning-content">
+      <div id="loading" class="empty-state" style="padding:48px 0;">Chargement...</div>
+      <div id="planning-table-container" class="hidden"></div>
+    </div>
+
+    <div id="planning-legend" class="planning-legend hidden">
+      <span class="legend-uncertain">[nom]</span> = incertain &nbsp;&nbsp;
+      <span class="legend-guest">★ nom</span> = invité
+    </div>
+  </div>
+
+  <script src="/planning.js"></script>
+</body>
+</html>

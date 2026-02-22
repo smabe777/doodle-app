@@ -44,7 +44,10 @@
       <section id="results-section">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
           <h2 style="margin-bottom: 0;">Réponses (<span id="response-count">0</span>)</h2>
-          <button type="button" id="export-btn" class="btn btn-export hidden">📊 Exporter Google Sheets</button>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <a href="#" id="planning-btn" class="btn btn-secondary hidden">🎼 Voir le planning</a>
+            <button type="button" id="export-btn" class="btn btn-export hidden">📊 Exporter Google Sheets</button>
+          </div>
         </div>
         <div id="no-responses" class="empty-state">Aucune réponse pour l'instant. Soyez le premier !</div>
         <div class="table-wrapper">
