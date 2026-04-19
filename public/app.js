@@ -49,6 +49,17 @@ function formatDateDisplay(dateStr) {
   });
 }
 
+function getDatesInRange(startDateStr, endDateStr) {
+  const dates = [];
+  const current = new Date(startDateStr + 'T00:00:00');
+  const end = new Date(endDateStr + 'T00:00:00');
+  while (current <= end) {
+    dates.push(formatDate(current));
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+}
+
 // --- Create page ---
 
 function initCreatePage() {
@@ -58,8 +69,34 @@ function initCreatePage() {
   const startDateInput = document.getElementById('start-date');
   const numDatesInput = document.getElementById('num-dates');
 
-  // Display existing poll history
+  // Display existing poll histories
   displayPollHistory();
+  displayHorsSerieHistory();
+
+  // Tab switching
+  let activeTab = 'dimanches';
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeTab = btn.dataset.tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active'));
+      btn.classList.add('tab-active');
+
+      const isDimanches = activeTab === 'dimanches';
+      form.classList.toggle('hidden', !isDimanches);
+      successPanel.classList.add('hidden');
+
+      const hsPolls = JSON.parse(localStorage.getItem('createdHorsSerie') || '[]');
+      document.getElementById('poll-history').classList.toggle(
+        'hidden', !isDimanches || JSON.parse(localStorage.getItem('createdPolls') || '[]').length === 0
+      );
+      document.getElementById('poll-history-hs').classList.toggle(
+        'hidden', isDimanches || hsPolls.length === 0
+      );
+      document.getElementById('create-form-hs').classList.toggle('hidden', isDimanches);
+    });
+  });
+
+  initCreatePageHorsSerie();
 
   // Default: next Sunday, 8 weeks
   startDateInput.value = getNextSunday();
@@ -162,6 +199,316 @@ function initCreatePage() {
   });
 }
 
+// --- Shared calendar picker ---
+
+function createCalendarPicker(existingDates = []) {
+  const selectedDates = new Set();
+  const now = new Date();
+  let calYear = now.getFullYear();
+  let calMonth = now.getMonth();
+
+  const wrapper = document.createElement('div');
+  const picker = document.createElement('div');
+  picker.className = 'cal-picker';
+
+  const nav = document.createElement('div');
+  nav.className = 'cal-nav';
+  const prevBtn = document.createElement('button');
+  prevBtn.type = 'button'; prevBtn.className = 'cal-nav-btn'; prevBtn.innerHTML = '&#8249;';
+  const monthLabel = document.createElement('span');
+  const nextBtn = document.createElement('button');
+  nextBtn.type = 'button'; nextBtn.className = 'cal-nav-btn'; nextBtn.innerHTML = '&#8250;';
+  nav.append(prevBtn, monthLabel, nextBtn);
+
+  const grid = document.createElement('div');
+  grid.className = 'cal-grid';
+  picker.append(nav, grid);
+
+  const summary = document.createElement('div');
+  summary.className = 'cal-summary';
+  wrapper.append(picker, summary);
+
+  function render() {
+    grid.innerHTML = '';
+    monthLabel.textContent = new Date(calYear, calMonth, 1)
+      .toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+    ['L','M','M','J','V','S','D'].forEach(d => {
+      const h = document.createElement('div');
+      h.className = 'cal-day-header'; h.textContent = d;
+      grid.appendChild(h);
+    });
+
+    const firstDow = (new Date(calYear, calMonth, 1).getDay() + 6) % 7;
+    for (let i = 0; i < firstDow; i++) grid.appendChild(document.createElement('div'));
+
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = formatDate(new Date(calYear, calMonth, d));
+      const exists = existingDates.includes(dateStr);
+      const cell = document.createElement('div');
+      cell.className = 'cal-day' +
+        (exists ? ' cal-exists' : '') +
+        (selectedDates.has(dateStr) ? ' cal-selected' : '');
+      cell.textContent = d;
+      if (!exists) {
+        cell.addEventListener('click', () => {
+          if (selectedDates.has(dateStr)) {
+            selectedDates.delete(dateStr); cell.classList.remove('cal-selected');
+          } else {
+            selectedDates.add(dateStr); cell.classList.add('cal-selected');
+          }
+          updateSummary();
+        });
+      }
+      grid.appendChild(cell);
+    }
+    updateSummary();
+  }
+
+  function updateSummary() {
+    const n = selectedDates.size;
+    summary.textContent = n === 0
+      ? 'Aucune date sélectionnée'
+      : `${n} date${n > 1 ? 's' : ''} sélectionnée${n > 1 ? 's' : ''}`;
+  }
+
+  prevBtn.addEventListener('click', () => {
+    calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } render();
+  });
+  nextBtn.addEventListener('click', () => {
+    calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } render();
+  });
+
+  render();
+  return { element: wrapper, getSelectedDates: () => Array.from(selectedDates).sort() };
+}
+
+// --- Hors série form ---
+
+function initCreatePageHorsSerie() {
+  const form = document.getElementById('create-form-hs');
+  const successPanel = document.getElementById('success-panel');
+
+  // Calendar state
+  const selectedDates = new Set();
+  const now = new Date();
+  let calYear = now.getFullYear();
+  let calMonth = now.getMonth();
+
+  function renderCalendar() {
+    const grid = document.getElementById('hs-cal-grid');
+    const label = document.getElementById('hs-month-label');
+    grid.innerHTML = '';
+
+    label.textContent = new Date(calYear, calMonth, 1)
+      .toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+    // Day headers: L M M J V S D
+    ['L','M','M','J','V','S','D'].forEach(d => {
+      const cell = document.createElement('div');
+      cell.className = 'cal-day-header';
+      cell.textContent = d;
+      grid.appendChild(cell);
+    });
+
+    // Empty cells before 1st (Mon = 0)
+    const firstDow = (new Date(calYear, calMonth, 1).getDay() + 6) % 7;
+    for (let i = 0; i < firstDow; i++) {
+      grid.appendChild(document.createElement('div'));
+    }
+
+    // Day cells
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = formatDate(new Date(calYear, calMonth, d));
+      const cell = document.createElement('div');
+      cell.className = 'cal-day' + (selectedDates.has(dateStr) ? ' cal-selected' : '');
+      cell.textContent = d;
+      cell.addEventListener('click', () => {
+        if (selectedDates.has(dateStr)) {
+          selectedDates.delete(dateStr);
+          cell.classList.remove('cal-selected');
+        } else {
+          selectedDates.add(dateStr);
+          cell.classList.add('cal-selected');
+        }
+        updateSummary();
+      });
+      grid.appendChild(cell);
+    }
+    updateSummary();
+  }
+
+  function updateSummary() {
+    const summary = document.getElementById('hs-selected-summary');
+    const n = selectedDates.size;
+    summary.textContent = n === 0
+      ? 'Aucune date sélectionnée'
+      : `${n} date${n > 1 ? 's' : ''} sélectionnée${n > 1 ? 's' : ''}`;
+  }
+
+  document.getElementById('hs-prev-month').addEventListener('click', () => {
+    calMonth--;
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+    renderCalendar();
+  });
+  document.getElementById('hs-next-month').addEventListener('click', () => {
+    calMonth++;
+    if (calMonth > 11) { calMonth = 0; calYear++; }
+    renderCalendar();
+  });
+
+  renderCalendar();
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const checkedDates = Array.from(selectedDates).sort();
+
+    if (checkedDates.length === 0) {
+      alert('Veuillez sélectionner au moins une date.');
+      return;
+    }
+
+    const participantsText = document.getElementById('hs-participants').value.trim();
+    const participants = participantsText.split('\n').map(p => p.trim()).filter(p => p.length > 0);
+
+    if (participants.length === 0) {
+      alert('Veuillez ajouter au moins un participant.');
+      return;
+    }
+
+    const payload = {
+      title: document.getElementById('hs-title').value,
+      description: document.getElementById('hs-description').value,
+      duration: '',
+      dates: checkedDates,
+      participants,
+      instruments: [],
+      type: 'hors-serie',
+    };
+
+    try {
+      const res = await fetch('/api/polls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      form.classList.add('hidden');
+      successPanel.classList.remove('hidden');
+
+      const shareUrl = `${window.location.origin}${data.url}`;
+      document.getElementById('share-url').value = shareUrl;
+
+      saveHorsSerieToHistory({
+        id: data.id,
+        title: payload.title,
+        url: shareUrl,
+        createdAt: new Date().toISOString(),
+        deletionToken: data.deletionToken,
+      });
+
+      displayHorsSerieHistory();
+
+      document.getElementById('copy-btn').addEventListener('click', () => {
+        navigator.clipboard.writeText(shareUrl);
+        const btn = document.getElementById('copy-btn');
+        btn.textContent = 'Copié !';
+        setTimeout(() => { btn.textContent = 'Copier'; }, 2000);
+      });
+    } catch (err) {
+      alert('Erreur lors de la création : ' + err.message);
+    }
+  });
+}
+
+function saveHorsSerieToHistory(poll) {
+  const polls = JSON.parse(localStorage.getItem('createdHorsSerie') || '[]');
+  polls.unshift(poll);
+  localStorage.setItem('createdHorsSerie', JSON.stringify(polls.slice(0, 20)));
+}
+
+function displayHorsSerieHistory() {
+  const polls = JSON.parse(localStorage.getItem('createdHorsSerie') || '[]');
+  const historySection = document.getElementById('poll-history-hs');
+  const pollList = document.getElementById('poll-list-hs');
+
+  if (polls.length === 0) {
+    historySection.classList.add('hidden');
+    return;
+  }
+
+  historySection.classList.remove('hidden');
+  pollList.innerHTML = '';
+
+  polls.forEach(poll => {
+    const item = document.createElement('div');
+    item.className = 'poll-item';
+
+    const info = document.createElement('div');
+    const title = document.createElement('div');
+    title.className = 'poll-item-title';
+    title.textContent = poll.title;
+
+    const date = document.createElement('div');
+    date.className = 'poll-item-date';
+    date.textContent = new Date(poll.createdAt).toLocaleDateString('fr-FR', {
+      day: 'numeric', month: 'long', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+
+    info.appendChild(title);
+    info.appendChild(date);
+
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+
+    const adminLink = document.createElement('a');
+    adminLink.className = 'poll-item-link';
+    adminLink.href = poll.url + '?adminToken=' + poll.deletionToken;
+    adminLink.textContent = 'Voir le sondage';
+
+    const shareBtn = document.createElement('button');
+    shareBtn.className = 'poll-item-link';
+    shareBtn.textContent = 'Lien à partager';
+    shareBtn.style.cursor = 'pointer';
+    shareBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(poll.url);
+      shareBtn.textContent = 'Copié !';
+      setTimeout(() => { shareBtn.textContent = 'Lien à partager'; }, 2000);
+    });
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'poll-item-link poll-item-delete';
+    deleteBtn.textContent = 'Supprimer';
+    deleteBtn.style.cursor = 'pointer';
+    deleteBtn.addEventListener('click', async () => {
+      if (confirm(`Supprimer "${poll.title}" ?`)) {
+        await deletePoll(poll);
+        const updated = JSON.parse(localStorage.getItem('createdHorsSerie') || '[]')
+          .filter(p => p.id !== poll.id);
+        localStorage.setItem('createdHorsSerie', JSON.stringify(updated));
+        displayHorsSerieHistory();
+      }
+    });
+
+    const visibilityBtn = makeVisibilityBtn(poll, 'createdHorsSerie');
+
+    buttonsContainer.appendChild(adminLink);
+    buttonsContainer.appendChild(shareBtn);
+    buttonsContainer.appendChild(visibilityBtn);
+    buttonsContainer.appendChild(deleteBtn);
+
+    item.appendChild(info);
+    item.appendChild(buttonsContainer);
+    pollList.appendChild(item);
+  });
+}
+
 // --- Poll page ---
 
 async function initPollPage(pollId) {
@@ -181,16 +528,77 @@ async function initPollPage(pollId) {
       poll.duration ? `Rencontre : ${poll.duration}` : '';
     document.title = `${poll.title} - Planning EPEBW - Musique`;
 
+    const horsSerie = poll.type === 'hors-serie';
+    if (horsSerie) document.body.classList.add('hors-serie-theme');
+
     buildParticipantSelect(poll.participants, poll);
-    buildUpfrontInstruments(poll.instruments);
-    buildAvailabilityGrid(poll.dates);
+    if (!horsSerie) buildUpfrontInstruments(poll.instruments);
+    buildAvailabilityGrid(poll.dates, horsSerie);
     renderResults(poll);
+
+    // If opened via admin link, auto-save poll to localStorage (enables cross-device sync)
+    const urlParams = new URLSearchParams(window.location.search);
+    const adminToken = urlParams.get('adminToken');
+    if (adminToken) {
+      const existing = JSON.parse(localStorage.getItem('createdPolls') || '[]');
+      if (!existing.some(p => p.id === pollId)) {
+        savePollToHistory({
+          id: pollId,
+          title: poll.title,
+          url: `${window.location.origin}/poll/${pollId}`,
+          createdAt: poll.createdAt || new Date().toISOString(),
+          deletionToken: adminToken
+        });
+      }
+    }
+
+    // Admin + hors série: show "add dates" panel
+    if (adminToken && horsSerie) {
+      const addSection = document.createElement('section');
+      addSection.style.cssText = 'margin-top: 32px; padding-top: 24px; border-top: 1px solid #2a2a2a;';
+      const addTitle = document.createElement('h3');
+      addTitle.textContent = 'Ajouter des dates';
+      addTitle.style.marginBottom = '12px';
+
+      const cal = createCalendarPicker(poll.dates);
+
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'btn btn-primary';
+      addBtn.style.marginTop = '12px';
+      addBtn.textContent = 'Ajouter les dates sélectionnées';
+
+      addBtn.addEventListener('click', async () => {
+        const newDates = cal.getSelectedDates();
+        if (newDates.length === 0) { alert('Aucune nouvelle date sélectionnée.'); return; }
+        addBtn.disabled = true;
+        addBtn.textContent = 'Ajout en cours…';
+        try {
+          const res = await fetch(`/api/polls/${pollId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ deletionToken: adminToken, newDates }),
+          });
+          if (!res.ok) throw new Error((await res.json()).error);
+          window.location.reload();
+        } catch (err) {
+          alert('Erreur : ' + err.message);
+          addBtn.disabled = false;
+          addBtn.textContent = 'Ajouter les dates sélectionnées';
+        }
+      });
+
+      addSection.append(addTitle, cal.element, addBtn);
+      document.querySelector('main').appendChild(addSection);
+    }
 
     // Show planning button only if a saved planning exists
     if (poll.planning && Object.keys(poll.planning).length > 0) {
       const planningBtn = document.getElementById('planning-btn');
       if (planningBtn) {
-        planningBtn.href = `/planning.html?id=${pollId}&back=poll`;
+        let planningHref = `/planning.html?id=${pollId}&back=poll`;
+        if (adminToken) planningHref += `&adminToken=${adminToken}`;
+        planningBtn.href = planningHref;
         planningBtn.classList.remove('hidden');
       }
     }
@@ -201,13 +609,13 @@ async function initPollPage(pollId) {
       const name = document.getElementById('participant-name').value.trim();
       if (!name) return;
 
-      // Get upfront instruments
-      const upfrontInstruments = Array.from(
+      // Get upfront instruments (only for regular polls)
+      const upfrontInstruments = horsSerie ? [] : Array.from(
         document.querySelectorAll('.upfront-instrument:checked')
       ).map(cb => cb.value);
 
-      // Validate that at least one upfront instrument is selected
-      if (upfrontInstruments.length === 0) {
+      // Validate that at least one upfront instrument is selected (regular polls only)
+      if (!horsSerie && upfrontInstruments.length === 0) {
         alert('Veuillez sélectionner au moins un instrument dans "Vos instruments".');
         return;
       }
@@ -224,11 +632,13 @@ async function initPollPage(pollId) {
         }
         answers[date] = selected.value;
 
-        // Get selected instruments for this date
-        const selectedInstruments = Array.from(
-          document.querySelectorAll(`input[name="instrument-${date}"]:checked`)
-        ).map(cb => cb.value);
-        instruments[date] = selectedInstruments;
+        if (!horsSerie) {
+          // Get selected instruments for this date
+          const selectedInstruments = Array.from(
+            document.querySelectorAll(`input[name="instrument-${date}"]:checked`)
+          ).map(cb => cb.value);
+          instruments[date] = selectedInstruments;
+        }
       }
 
       try {
@@ -277,7 +687,7 @@ function buildParticipantSelect(participants, poll) {
   select.addEventListener('change', () => {
     const upfrontSection = document.getElementById('upfront-instruments-section');
     if (select.value) {
-      upfrontSection.style.display = 'block';
+      if (poll.type !== 'hors-serie') upfrontSection.style.display = 'block';
       loadPreviousResponse(select.value, poll);
     } else {
       upfrontSection.style.display = 'none';
@@ -320,35 +730,47 @@ function buildUpfrontInstruments(instruments) {
   });
 }
 
-function buildAvailabilityGrid(dates) {
+function isPastDate(dateStr) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return new Date(dateStr + 'T00:00:00') < today;
+}
+
+function buildAvailabilityGrid(dates, horsSerie = false) {
   const grid = document.getElementById('availability-grid');
   grid.innerHTML = '';
 
   dates.forEach(dateStr => {
+    const past = isPastDate(dateStr);
     const row = document.createElement('div');
-    row.className = 'availability-row';
+    row.className = past ? 'availability-row availability-row-past' : 'availability-row';
 
-    // Create empty instruments container (will be populated dynamically)
-    const instrumentsHtml = '<div class="instruments-select" id="instruments-' + dateStr + '" style="display:none; margin-top: 8px;"></div>';
+    const instrumentsHtml = horsSerie ? '' :
+      '<div class="instruments-select" id="instruments-' + dateStr + '" style="display:none; margin-top: 8px;"></div>';
+    const disabledAttr = past ? ' disabled' : '';
+    const ifNeededHtml = horsSerie ? '' :
+      `<label class="radio-option radio-ifneeded">` +
+        `<input type="radio" name="answer-${dateStr}" value="ifneeded"${disabledAttr}>` +
+        `<span>Si nécessaire</span>` +
+      `</label>`;
 
     row.innerHTML =
       `<span class="date-label" data-date="${dateStr}">${formatDateDisplay(dateStr)}</span>` +
       `<div class="radio-group">` +
         `<label class="radio-option radio-yes">` +
-          `<input type="radio" name="answer-${dateStr}" value="yes">` +
+          `<input type="radio" name="answer-${dateStr}" value="yes"${disabledAttr}>` +
           `<span>Oui</span>` +
         `</label>` +
-        `<label class="radio-option radio-ifneeded">` +
-          `<input type="radio" name="answer-${dateStr}" value="ifneeded">` +
-          `<span>Si nécessaire</span>` +
-        `</label>` +
+        ifNeededHtml +
         `<label class="radio-option radio-no">` +
-          `<input type="radio" name="answer-${dateStr}" value="no" checked>` +
+          `<input type="radio" name="answer-${dateStr}" value="no" checked${disabledAttr}>` +
           `<span>Non</span>` +
         `</label>` +
       `</div>` +
       instrumentsHtml;
     grid.appendChild(row);
+
+    if (past || horsSerie) return; // no instrument event listeners needed
 
     // Add event listeners to show/hide instruments
     const radios = row.querySelectorAll(`input[name="answer-${dateStr}"]`);
@@ -688,7 +1110,7 @@ function displayPollHistory() {
     // Admin link
     const adminLink = document.createElement("a");
     adminLink.className = "poll-item-link";
-    adminLink.href = poll.url + "?admin=true";
+    adminLink.href = poll.url + "?adminToken=" + poll.deletionToken;
     adminLink.textContent = "Voir le sondage";
 
     // Share link button
@@ -724,7 +1146,7 @@ function displayPollHistory() {
     // Planning button (admin editable planning page)
     const planningBtn = document.createElement("a");
     planningBtn.className = "poll-item-link";
-    planningBtn.href = `/planning.html?id=${poll.id}&admin=true&back=admin`;
+    planningBtn.href = `/planning.html?id=${poll.id}&adminToken=${poll.deletionToken}&back=admin`;
     planningBtn.textContent = "Planning";
 
     // Composition button
@@ -749,17 +1171,52 @@ function displayPollHistory() {
       }
     });
 
+    const visibilityBtn = makeVisibilityBtn(poll, 'createdPolls');
+
     buttonsContainer.appendChild(adminLink);
     buttonsContainer.appendChild(shareBtn);
     buttonsContainer.appendChild(planningBtn);
     buttonsContainer.appendChild(compositionBtn);
     buttonsContainer.appendChild(editBtn);
+    buttonsContainer.appendChild(visibilityBtn);
     buttonsContainer.appendChild(deleteBtn);
 
     item.appendChild(info);
     item.appendChild(buttonsContainer);
     pollList.appendChild(item);
   });
+}
+
+function makeVisibilityBtn(poll, storageKey) {
+  const btn = document.createElement('button');
+  btn.className = 'poll-item-link';
+  btn.style.cursor = 'pointer';
+  const update = (hidden) => {
+    btn.textContent = hidden ? 'Afficher dans le hub' : 'Masquer du hub';
+  };
+  update(!!poll.hidden);
+  btn.addEventListener('click', async () => {
+    const newHidden = !poll.hidden;
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/polls/${poll.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deletionToken: poll.deletionToken, hidden: newHidden }),
+      });
+      if (!res.ok) throw new Error('Erreur');
+      poll.hidden = newHidden;
+      const all = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      const idx = all.findIndex(p => p.id === poll.id);
+      if (idx !== -1) { all[idx].hidden = newHidden; localStorage.setItem(storageKey, JSON.stringify(all)); }
+      update(newHidden);
+    } catch (err) {
+      alert('Erreur lors de la mise à jour : ' + err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  return btn;
 }
 
 async function deletePoll(poll) {
@@ -915,16 +1372,15 @@ function initExportButton(poll) {
   const exportBtn = document.getElementById("export-btn");
   if (!exportBtn) return;
 
-  // Check if we're in admin mode (URL has ?admin=true)
+  // Check if we're in admin mode (URL has ?adminToken or legacy ?admin=true)
   const urlParams = new URLSearchParams(window.location.search);
-  const isAdminMode = urlParams.get("admin") === "true";
-
-  // Only show export button if user is the poll creator AND in admin mode
+  const adminToken = urlParams.get("adminToken");
   const createdPolls = JSON.parse(localStorage.getItem("createdPolls") || "[]");
   const isCreator = createdPolls.some(p => p.id === poll.id);
+  const isAdminMode = !!adminToken || (urlParams.get("admin") === "true" && isCreator);
 
-  // Show export button only for creator in admin mode and when there are responses
-  if (isCreator && isAdminMode && poll.responses.length > 0) {
+  // Show export button only for admin in admin mode and when there are responses
+  if (isAdminMode && poll.responses.length > 0) {
     exportBtn.classList.remove("hidden");
   }
 

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sondages - Planifier ensemble</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .hub-section-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #555;
+      margin: 32px 0 12px;
+    }
+    .hub-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 20px;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .hub-card:hover { border-color: #444; background: #1f1f1f; }
+    .hub-card.hs { border-left: 3px solid #d4922a; }
+    .hub-card.past { opacity: 0.55; }
+    .hub-card-title {
+      font-weight: 600;
+      color: #d4d4d4;
+      margin-bottom: 4px;
+    }
+    .hub-card-meta {
+      font-size: 0.82rem;
+      color: #666;
+    }
+    .hub-card-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 20px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge-active { background: #1e3a1e; color: #5cb85c; }
+    .badge-past   { background: #2a2a2a; color: #666; }
+    .badge-hs     { background: #3a2a0a; color: #d4922a; }
+    .hub-empty { color: #555; font-style: italic; font-size: 0.9rem; padding: 12px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Planifier ensemble</h1>
+      <p class="subtitle">Choisissez un sondage pour voter ou voir les résultats</p>
+    </header>
+
+    <main>
+      <div id="loading" style="color:#666; padding: 24px 0;">Chargement…</div>
+
+      <div id="active-section" class="hidden">
+        <div class="hub-section-title">À venir — encore ouvert au vote</div>
+        <div id="active-list"></div>
+      </div>
+
+      <div id="past-section" class="hidden">
+        <div class="hub-section-title">Passés</div>
+        <div id="past-list"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/hub.js"></script>
+</body>
+</html>

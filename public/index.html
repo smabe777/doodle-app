@@ -14,6 +14,16 @@
     </header>
 
     <main>
+      <div class="tab-bar">
+        <button class="tab-btn tab-active" data-tab="dimanches">Planifier ensemble</button>
+        <button class="tab-btn" data-tab="hors-serie">Hors série</button>
+      </div>
+
+      <div id="poll-history" class="hidden">
+        <h3>Mes sondages créés</h3>
+        <div id="poll-list" class="poll-list"></div>
+      </div>
+
       <form id="create-form">
         <div class="form-group">
           <label for="title">Titre de l'événement</label>
@@ -76,10 +86,45 @@
         </div>
       </div>
 
-      <div id="poll-history" class="hidden">
-        <h3>Mes sondages créés</h3>
-        <div id="poll-list" class="poll-list"></div>
+      <!-- Onglet Hors série -->
+      <div id="poll-history-hs" class="hidden">
+        <h3>Mes hors série créés</h3>
+        <div id="poll-list-hs" class="poll-list"></div>
       </div>
+
+      <form id="create-form-hs" class="hidden">
+        <div class="form-group">
+          <label for="hs-title">Titre de l'événement</label>
+          <input type="text" id="hs-title" value="Répétition hors série" required>
+        </div>
+
+        <div class="form-group">
+          <label for="hs-description">Description (optionnel)</label>
+          <textarea id="hs-description" rows="2" placeholder="Par ex., Session de répétition spéciale"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="hs-participants">Participants (un par ligne)</label>
+          <textarea id="hs-participants" rows="5" placeholder="Alice&#10;Bob&#10;Charlie" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Sélectionner les dates</label>
+          <p class="help-text">Cliquez sur les jours à inclure dans le sondage.</p>
+          <div class="cal-picker">
+            <div class="cal-nav">
+              <button type="button" id="hs-prev-month" class="cal-nav-btn">&#8249;</button>
+              <span id="hs-month-label"></span>
+              <button type="button" id="hs-next-month" class="cal-nav-btn">&#8250;</button>
+            </div>
+            <div class="cal-grid" id="hs-cal-grid"></div>
+          </div>
+          <div id="hs-selected-summary" class="cal-summary">Aucune date sélectionnée</div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Créer le sondage</button>
+      </form>
+
     </main>
   </div>
 

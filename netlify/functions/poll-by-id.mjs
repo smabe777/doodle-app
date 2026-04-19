@@ -111,6 +111,37 @@ export default async (req, context) => {
         });
       }
 
+      // Toggle hub visibility
+      if (body.hidden !== undefined) {
+        await db.collection('polls').updateOne(
+          { id: pollId },
+          { $set: { hidden: !!body.hidden } }
+        );
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Add new dates to the poll
+      if (body.newDates !== undefined) {
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        const existingSet = new Set(poll.dates);
+        const trulyNew = (body.newDates || [])
+          .filter(d => dateRegex.test(d) && !isNaN(new Date(d).getTime()) && !existingSet.has(d));
+        if (trulyNew.length > 0) {
+          const updatedDates = [...poll.dates, ...trulyNew].sort();
+          await db.collection('polls').updateOne(
+            { id: pollId },
+            { $set: { dates: updatedDates } }
+          );
+        }
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
       // Save planning if provided
       if (body.planning !== undefined) {
         await db.collection('polls').updateOne(

@@ -14,6 +14,12 @@
   to = "/poll.html"
   status = 200
 
+# Hub page for participants
+[[redirects]]
+  from = "/hub"
+  to = "/hub.html"
+  status = 200
+
 # Fallback to index
 [[redirects]]
   from = "/*"

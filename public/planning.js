@@ -1,9 +1,10 @@
 // --- Planning page ---
-// URL params: ?id=<pollId>&admin=true&back=admin|poll
+// URL params: ?id=<pollId>&adminToken=<token>&back=admin|poll
 
 const urlParams = new URLSearchParams(window.location.search);
 const pollId = urlParams.get('id');
-const isAdmin = urlParams.get('admin') === 'true';
+const adminToken = urlParams.get('adminToken');
+const isAdmin = !!adminToken;
 const backTo = urlParams.get('back'); // 'admin' or 'poll'
 
 let currentPoll = null;
@@ -30,12 +31,31 @@ async function init() {
   document.getElementById('planning-title').textContent = `Planning — ${currentPoll.title}`;
   document.title = `Planning — ${currentPoll.title}`;
 
+  // If opened via admin link, auto-save poll to localStorage (enables cross-device sync)
+  if (adminToken) {
+    const existing = JSON.parse(localStorage.getItem('createdPolls') || '[]');
+    if (!existing.some(p => p.id === pollId)) {
+      const polls = existing;
+      polls.unshift({
+        id: pollId,
+        title: currentPoll.title,
+        url: `${window.location.origin}/poll/${pollId}`,
+        createdAt: currentPoll.createdAt || new Date().toISOString(),
+        deletionToken: adminToken
+      });
+      localStorage.setItem('createdPolls', JSON.stringify(polls.slice(0, 20)));
+    }
+  }
+
   // Back button
   document.getElementById('back-btn').addEventListener('click', () => {
     if (backTo === 'admin') {
       window.location.href = '/';
     } else {
-      window.location.href = `/poll/${pollId}`;
+      const backHref = adminToken
+        ? `/poll/${pollId}?adminToken=${adminToken}`
+        : `/poll/${pollId}`;
+      window.location.href = backHref;
     }
   });
 
@@ -74,6 +94,12 @@ function getInstrumentOrder() {
 function formatDate(dateStr) {
   const date = new Date(dateStr + 'T00:00:00');
   return date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+function isPastDate(dateStr) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return new Date(dateStr + 'T00:00:00') < today;
 }
 
 // Returns players available for a given instrument on a given date
@@ -116,7 +142,10 @@ function renderTable() {
   // Body: one row per session
   const tbody = table.createTBody();
   for (const dateStr of dates) {
+    const past = isPastDate(dateStr);
     const row = tbody.insertRow();
+    if (past) row.className = 'planning-row-past';
+
     const tdDate = document.createElement('td');
     tdDate.textContent = formatDate(dateStr);
     tdDate.className = 'planning-instr-name';
@@ -125,7 +154,7 @@ function renderTable() {
     for (const instrument of instruments) {
       const td = document.createElement('td');
       td.className = 'planning-cell';
-      if (isAdmin) {
+      if (isAdmin && !past) {
         td.appendChild(buildEditCell(instrument, dateStr));
       } else {
         td.appendChild(buildReadonlyCell(instrument, dateStr));
@@ -277,7 +306,7 @@ function onCompose() {
 }
 
 async function onSave() {
-  const token = getPollToken(pollId);
+  const token = adminToken || getPollToken(pollId);
   if (!token) {
     alert('Token introuvable. Assurez-vous d\'être l\'administrateur de ce sondage.');
     return;
